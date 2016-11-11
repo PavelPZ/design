@@ -1,0 +1,15 @@
+as_in=as=Assamese
+br_fr=br=Breton
+co_fr=co=Corsican
+ha_latn_ng=ha=Hausa
+ig_ng=ig=Igbo
+mt_mt=mt=Maltese
+mi_nz=mi=Maori
+oc_fr=oc=Occitan
+ps_af=ps=Pashto
+quz_pe=qu=Quechua
+nso_za=nso=Northern Sotho
+bo_cn=bo=Tibetan
+tn_za=tn=Tswana
+xh_za=xh=Xhosa
+yo_ng=yo=Yoruba

@@ -250,3 +250,12 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+typings/
+**/*.json
+*.js
+!glob/old2new/old-names.js
+!glob/old2new/old2new.json
+!glob/old2new/repair.json
+!glob/alphabets/characters.json
+
