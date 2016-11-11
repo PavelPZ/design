@@ -36,6 +36,7 @@
     <TypeScriptCompile Include="typings\node\node.d.ts" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".gitignore" />
     <Content Include="tsconfig.json" />
   </ItemGroup>
   <ItemGroup>
@@ -57,7 +58,7 @@
     <Content Include="glob\old2new\old2new.json" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="glob\alphabets\chacters.json" />
+    <Content Include="glob\alphabets\characters.json" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="glob\alphabets\run.cmd" />

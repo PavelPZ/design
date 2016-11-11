@@ -1,1 +1,1 @@
-node get-alphabets.js --harmony
+node get-alphabets.js --harmony 
