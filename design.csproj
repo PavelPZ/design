@@ -29,6 +29,7 @@
     <TypeScriptCompile Include="glob\old2new\all-langs.ts" />
     <TypeScriptCompile Include="glob\old2new\old-to-new.ts" />
     <TypeScriptCompile Include="glob\old2new\oldLangsEnum.ts" />
+    <TypeScriptCompile Include="rt\node-cmd.ts" />
     <TypeScriptCompile Include="typings\cldr.js\cldr.js.d.ts" />
     <TypeScriptCompile Include="typings\extend.d.ts" />
     <TypeScriptCompile Include="typings\globalize-compiler\globalize-compiler.d.ts" />
