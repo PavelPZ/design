@@ -70,6 +70,7 @@
   <ItemGroup>
     <Content Include="glob\alphabets\languages-cs.json" />
   </ItemGroup>
+  <ItemGroup />
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>
   </PropertyGroup>

@@ -5,10 +5,10 @@ import * as fs from "fs";
 import * as compiler from "globalize-compiler"; ////http://stackoverflow.com/questions/32142529/how-to-access-culture-data-in-globalize-js-v1-0-0
 import * as extend from "extend";
 import * as formaters from "../../rw-lib/glob/formaters";
+import { allLangs } from './old2new/all-langs';
 let cldr: cldr.CldrFactory = require('cldrjs');
 let globalize: GlobalizeStatic = require("globalize");
 let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\index.js
-
 
 //************ hlavni funkce na generaci d:\rw\rw-lib\glob\*.js souboru s formatovacimi funkcemi
 //pouziti napr. 
@@ -17,19 +17,24 @@ export function compileRuntime(relDir: string/*adresar, relativne k self, pro .J
   console.log('START createGlob');
   let all = cldrData.all(); //naladuje vsechna JSON z d:\rw\design\node_modules\cldr-data\, main a supplemental
   globalize.load(all); //umisti je do globalize
+  //globalize.loadMessages({
+  //  cs: {
+  //    app: 'My plain text message 1'
+  //  }
+  //})
   //***************** know-how
 
-  formaters.allLangs.forEach(loc => {
-    var glob = new globalize(loc); //vzbere urcitou lokalizaci
+  allLangs.forEach(loc => {
+    var glob = new globalize(loc); //vybere urcitou lokalizaci
 
-    let dateFormater = glob.dateFormatter({ date: "full" });
-    console.log(dateFormater(new Date()));
+    //let dateFormater = glob.dateFormatter({ date: "full" });
+    //console.log(dateFormater(new Date()));
 
     //pro kazdy jazyk, formater a parametr formateru vztvori lokalizacni funkci
     var allForms: Array<formaters.getFormatterFnc> = [];
-    for (var p in formaters.formaterFncs) allForms.push(formaters.formaterFncs[p]); 
-    let js = compiler.compile(allForms.map(f => f(glob))); //vlastni generace .JS, uklada do d:\rw\rw-lib\glob\*.js
-    fs.writeFileSync(`${relDir}${loc}.js`, js);
+    for (var p in formaters.formaterFncs) allForms.push(formaters.formaterFncs[p]);
+    let js = compiler.compile(allForms.map(f => f(glob))); //vlastni generace .JS
+    fs.writeFileSync(`../../rw-lib/glob/locale-data/${loc}.js`, js);
   });
   console.log('END createGlob');
 }
@@ -114,7 +119,7 @@ function fileListMin(locale: string): Array<string> { //number, date, message
 function files(list: Array<string>): Object {
   var res = {};
   list.forEach(f => {
-    let fn = (basicPath + f).replace(/\//g,'\\');
+    let fn = (basicPath + f).replace(/\//g, '\\');
     console.log(fn);
     let s = fs.readFileSync(fn, "utf8");
     let obj = JSON.parse(s) as IData;
