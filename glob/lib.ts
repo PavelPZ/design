@@ -10,6 +10,8 @@ let cldr: cldr.CldrFactory = require('cldrjs');
 let globalize: GlobalizeStatic = require("globalize");
 let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\index.js
 
+//let allLangs = ['cs'];
+
 //************ hlavni funkce na generaci d:\rw\rw-lib\glob\*.js souboru s formatovacimi funkcemi
 //pouziti napr. 
 //  createGlob('..\\..\\temp\\');
@@ -19,7 +21,8 @@ export function compileRuntime(relDir: string/*adresar, relativne k self, pro .J
   globalize.load(all); //umisti je do globalize
   //globalize.loadMessages({
   //  cs: {
-  //    app: 'My plain text message 1'
+  //    plain: 'My plain text message',
+  //    complex: '{count, plural, one {one message} other {{formattedCount} messages}} remaining'
   //  }
   //})
   //***************** know-how
@@ -27,13 +30,16 @@ export function compileRuntime(relDir: string/*adresar, relativne k self, pro .J
   allLangs.forEach(loc => {
     var glob = new globalize(loc); //vybere urcitou lokalizaci
 
-    //let dateFormater = glob.dateFormatter({ date: "full" });
+    let formattedCount = glob.dateFormatter({ date: "full" });
     //console.log(dateFormater(new Date()));
 
     //pro kazdy jazyk, formater a parametr formateru vztvori lokalizacni funkci
     var allForms: Array<formaters.getFormatterFnc> = [];
     for (var p in formaters.formaterFncs) allForms.push(formaters.formaterFncs[p]);
     let js = compiler.compile(allForms.map(f => f(glob))); //vlastni generace .JS
+
+    //let js2 = compiler.compile([new Globalize('en').messageFormatter('*')]); //vlastni generace .J
+
     fs.writeFileSync(`../../rw-lib/glob/locale-data/${loc}.js`, js);
   });
   console.log('END createGlob');
