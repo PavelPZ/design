@@ -2073,6 +2073,11 @@ declare module "semantic-ui-react/elements/Button/Button" {
   export default Button;
 }
 
+declare module "semantic-ui-react/elements/Button/ButtonContent" {
+  const ButtonContent: typeof __SUI.ButtonContent;
+  export default ButtonContent;
+}
+
 declare module "semantic-ui-react/elements/Accordion/Accordion" {
   const Accordion: __SUI.AccordionClass;
   export default Accordion;
