@@ -2064,8 +2064,9 @@ declare namespace __SUI {
 declare module "semantic-ui-react" {
   const Button: __SUI.ButtonClass;
   const Accordion: __SUI.AccordionClass;
+  const ButtonContent: typeof __SUI.ButtonContent;
   //etc...
-  export { Button, Accordion /*... etc*/ }
+  export { Button, ButtonContent, Accordion /*... etc*/ }
 }
 
 declare module "semantic-ui-react/elements/Button/Button" {
