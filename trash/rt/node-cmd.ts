@@ -1,4 +1,5 @@
-﻿import * as fs from "fs";
+﻿//Jiz neni potreba, RT's JS souboru se jiz nemodifikuji
+import * as fs from "fs";
 
 const basicPath = '../../design-rt/';
 

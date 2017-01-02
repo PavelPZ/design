@@ -29,15 +29,18 @@
     <TypeScriptCompile Include="glob\old2new\all-langs.ts" />
     <TypeScriptCompile Include="glob\old2new\old-to-new.ts" />
     <TypeScriptCompile Include="glob\old2new\oldLangsEnum.ts" />
-    <TypeScriptCompile Include="rt\node-cmd.ts" />
-    <TypeScriptCompile Include="typings\cldr.js\cldr.js.d.ts" />
+    <TypeScriptCompile Include="trash\rt\node-cmd.ts" />
+    <None Include="typings\cldr.js\cldr.js.d.ts_" />
     <TypeScriptCompile Include="typings\extend.d.ts" />
-    <TypeScriptCompile Include="typings\globalize-compiler\globalize-compiler.d.ts" />
-    <TypeScriptCompile Include="typings\globalize\globalize.d.ts" />
-    <TypeScriptCompile Include="typings\node\node.d.ts" />
+    <None Include="typings\globalize-compiler\globalize-compiler.d.ts_" />
+    <None Include="typings\globalize\globalize.d.ts_" />
+    <Content Include="img2js\image-url-template.templ" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".gitignore" />
+    <TypeScriptCompile Include="trash\atom\gulpfile.ts" />
+    <TypeScriptCompile Include="atomic-css\gulpfile.ts" />
+    <TypeScriptCompile Include="img2js\gulpfile.ts" />
     <Content Include="tsconfig.json" />
   </ItemGroup>
   <ItemGroup>
@@ -70,7 +73,12 @@
   <ItemGroup>
     <Content Include="glob\alphabets\languages-cs.json" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="package.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="atomic-css\atomizer-config.json" />
+  </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>
   </PropertyGroup>

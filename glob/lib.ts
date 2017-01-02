@@ -6,8 +6,11 @@ import * as compiler from "globalize-compiler"; ////http://stackoverflow.com/que
 import * as extend from "extend";
 import * as formaters from "../../rw-lib/glob/formaters";
 import { allLangs } from './old2new/all-langs';
-let cldr: cldr.CldrFactory = require('cldrjs');
-let globalize: GlobalizeStatic = require("globalize");
+import * as cldr from 'cldrjs';
+import * as Globalize from 'globalize';
+
+//let cldr: cldr.CldrFactory = require('cldrjs');
+//let globalize: GlobalizeStatic = require("globalize");
 let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\index.js
 
 //let allLangs = ['cs'];
@@ -18,7 +21,7 @@ let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\ind
 export function compileRuntime(relDir: string/*adresar, relativne k self, pro .JS soubory*/) {
   console.log('START createGlob');
   let all = cldrData.all(); //naladuje vsechna JSON z d:\rw\design\node_modules\cldr-data\, main a supplemental
-  globalize.load(all); //umisti je do globalize
+  Globalize.load(all); //umisti je do globalize
   //globalize.loadMessages({
   //  cs: {
   //    plain: 'My plain text message',
@@ -28,7 +31,7 @@ export function compileRuntime(relDir: string/*adresar, relativne k self, pro .J
   //***************** know-how
 
   allLangs.forEach(loc => {
-    var glob = new globalize(loc); //vybere urcitou lokalizaci
+    var glob = new Globalize(loc); //vybere urcitou lokalizaci
 
     let formattedCount = glob.dateFormatter({ date: "full" });
     //console.log(dateFormater(new Date()));
@@ -49,8 +52,8 @@ function knowHow() {
   //po castech:
   let main = cldrData.entireMainFor('cs');
   let supls = cldrData.entireSupplemental();
-  globalize.load(supls);
-  globalize.load(main);
+  Globalize.load(supls);
+  Globalize.load(main);
   console.log(cldrData.availableLocales);
 
   cldr.load(supls);
