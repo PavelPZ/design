@@ -1,0 +1,50 @@
+{
+  "name": "design",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "@types/cldrjs": "^0.4.18",
+    "@types/globalize": "0.0.30",
+    "@types/globalize-compiler": "^0.2.4",
+    "@types/gulp": "^3.8.32",
+    "@types/gulp-autoprefixer": "0.0.29",
+    "@types/gulp-rename": "0.0.31",
+    "@types/image-size": "0.0.28",
+    "@types/lodash": "^4.14.45",
+    "@types/run-sequence": "0.0.28",
+    "@types/yargs": "^6.5.0",
+    "atomizer": "^3.3.8",
+    "cldr-data": "^30.0.1",
+    "cldrjs": "^0.4.5",
+    "fs": "^0.0.1-security",
+    "globalize": "^1.1.1",
+    "globalize-compiler": "^0.2.0",
+    "gulp": "^3.9.1",
+    "gulp-atomizer": "^3.0.6",
+    "gulp-autoprefixer": "^3.1.1",
+    "gulp-clean": "^0.3.2",
+    "gulp-debug": "^3.0.0",
+    "gulp-ignore": "^2.0.2",
+    "gulp-image-data-uri": "^1.2.2",
+    "gulp-rename": "^1.2.2",
+    "image-size": "^0.5.1",
+    "lodash": "^4.17.4",
+    "run-sequence": "^1.2.2",
+    "yargs": "^6.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PavelPZ/design.git"
+  },
+  "author": "PavelPZ <pzika@langmaster.cz> (https://github.com/PavelPZ)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PavelPZ/design/issues"
+  },
+  "homepage": "https://github.com/PavelPZ/design#readme"
+}

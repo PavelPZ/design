@@ -30,10 +30,6 @@
     <TypeScriptCompile Include="glob\old2new\old-to-new.ts" />
     <TypeScriptCompile Include="glob\old2new\oldLangsEnum.ts" />
     <TypeScriptCompile Include="trash\rt\node-cmd.ts" />
-    <None Include="typings\cldr.js\cldr.js.d.ts_" />
-    <TypeScriptCompile Include="typings\extend.d.ts" />
-    <None Include="typings\globalize-compiler\globalize-compiler.d.ts_" />
-    <None Include="typings\globalize\globalize.d.ts_" />
     <Content Include="img2js\image-url-template.templ" />
   </ItemGroup>
   <ItemGroup>

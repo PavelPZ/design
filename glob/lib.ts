@@ -3,11 +3,11 @@
 
 import * as fs from "fs";
 import * as compiler from "globalize-compiler"; ////http://stackoverflow.com/questions/32142529/how-to-access-culture-data-in-globalize-js-v1-0-0
-import * as extend from "extend";
 import * as formaters from "../../rw-lib/glob/formaters";
 import { allLangs } from './old2new/all-langs';
 import * as cldr from 'cldrjs';
 import * as Globalize from 'globalize';
+import * as _ from 'lodash';
 
 //let cldr: cldr.CldrFactory = require('cldrjs');
 //let globalize: GlobalizeStatic = require("globalize");
@@ -15,7 +15,7 @@ let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\ind
 
 //let allLangs = ['cs'];
 
-//************ hlavni funkce na generaci d:\rw\rw-lib\glob\*.js souboru s formatovacimi funkcemi
+//************ hlavni funkce na generaci d:\rw\rw-lib\glob\*.js souboru s formatovacimi funkcemi 
 //pouziti napr. 
 //  createGlob('..\\..\\temp\\');
 export function compileRuntime(relDir: string/*adresar, relativne k self, pro .JS soubory*/) {
@@ -132,7 +132,7 @@ function files(list: Array<string>): Object {
     console.log(fn);
     let s = fs.readFileSync(fn, "utf8");
     let obj = JSON.parse(s) as IData;
-    res = extend(true, res, obj);
+    _.merge(res, obj);
   });
   return res;
 }

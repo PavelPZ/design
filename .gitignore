@@ -259,3 +259,5 @@ typings/
 !glob/old2new/repair.json
 !glob/alphabets/characters.json
 
+!package.json
+!tsconfig.json
