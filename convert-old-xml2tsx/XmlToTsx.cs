@@ -10,21 +10,29 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Web;
+using System;
 
 namespace xmlToTsx {
   public static class convert {
     public static void toTsxAll() {
-      toTsxDir(@"d:\LMCom\rew\Web4\lm\oldea-new\english1", @"d:\rw\data\lm\oldea\english1");
+      toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea");
     }
 
     static void toTsxDir(string srcDir, string destDir) {
+      List<string> errors = new List<string>();
       foreach (var fn in Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml"))) {
-        var s = toTsx(XElement.Load(fn));
-        var relPath = fn.Substring(srcDir.Length); var destPath = destDir + relPath.Replace(".new.xml",".tsx");
-        lib.AdjustFileDir(destPath);
-        //File.WriteAllText(Path.ChangeExtension(destPath, ".tsx"), s);
-        File.WriteAllText(destPath, s);
+        var relPath = fn.Substring(srcDir.Length);
+        var destPath = destDir + relPath.Replace(".xml", ".tsx");
+        try {
+          var s = toTsx(XElement.Load(fn));
+          lib.AdjustFileDir(destPath);
+          File.WriteAllText(destPath, s);
+        } catch (Exception exp){
+          File.WriteAllText(destPath, exp.Message);
+          errors.Add(destPath);
+        }
       }
+      if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
     static string toTsx(XElement xml) {
@@ -57,8 +65,8 @@ namespace xmlToTsx {
             case "colspan": wrapExpression(renameAttr(attr, "colSpan")); break;
             case "rowspan": wrapExpression(renameAttr(attr, "rowSpan")); break;
             case "maxlength": wrapExpression(renameAttr(attr, "maxLength")); break;
-            case "style":
-              wrapExpression(attr, parseStyle(attr.Value)); break;
+            case "style": wrapExpression(attr, parseStyle(attr.Value)); break;
+            case "disabled": wrapExpression(attr, "true"); break;
           }
           //course components only
           if (!isTag) continue;
@@ -70,11 +78,10 @@ namespace xmlToTsx {
           if (boolProps.Contains(newName) || boolProps.Contains(fullName)) wrapExpression(newAttr);
           string enumType;
           if (enumProps.TryGetValue(newName, out enumType) || enumProps.TryGetValue(fullName, out enumType))
-            //wrapExpression(newAttr, "CourseModel." + enumType + "." + lib.toCammelCase(newAttr.Value));
             wrapExpression(newAttr, "course." + enumType + "." + lib.toCammelCase(newAttr.Value));
         }
       }
-      //cdata
+      //start: collapse CDATA do cdata atributu
       List<string> cdatas = new List<string>();
       foreach (var cd in body.DescendantNodes().OfType<XCData>().ToArray()) {
         cdatas.Add(cd.Value);
@@ -89,11 +96,12 @@ namespace xmlToTsx {
       foreach (var attr in body.Attributes().Where(a => a.IsNamespaceDeclaration || a.Name.LocalName == "noNamespaceSchemaLocation").ToArray()) attr.Remove();
       //xml to string
       StringBuilder sb = new StringBuilder();
-      var wr = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = true, Encoding = Encoding.UTF8, Indent = true });//, NewLineHandling = NewLineHandling.Replace, NewLineChars = "\n" });
-      body.Save(wr); wr.Flush();
-      //nahrada atributu vyrazem }
+      using (var wr = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = true, Encoding = Encoding.UTF8, Indent = true })) {//, NewLineHandling = NewLineHandling.Replace, NewLineChars = "\n" });
+        body.Save(wr); wr.Flush();
+      }
+      //finish: enum, bool, number value from string}
       sb.Replace("\"@{", "{").Replace("}@\"", "}");
-      //cdata z atributu do ES6 `` stringu
+      //finish: expand CDATA in cdata={``} atributu
       var res = sb.ToString(); sb = null;
       foreach (var m in lib.regExItem.Parse(res, cdataRx)) {
         if (sb == null) sb = new StringBuilder();
@@ -101,11 +109,14 @@ namespace xmlToTsx {
         var cd = cdatas[int.Parse(m.Value.Substring(3, m.Value.Length - 6))];
         sb.Append("{`"); sb.Append(cd.Replace("\\", "\\\\")); sb.Append("`}");
       }
-      //imports:
+      if (sb != null) res = sb.ToString();
+      //prefix:
       string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; export default () => /*
 *********** START MARKUP HERE: */
 ";
-      return sb == null ? res : string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i)) + sb.ToString();
+      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i));
+      //return
+      return prefix + res;
     }
     const string blankCode = "~blank~";
     static Regex cdataRx = new Regex("\"~\\{\\d+\\}~\"");
@@ -144,8 +155,8 @@ namespace xmlToTsx {
 
     static void wrapExpression(XAttribute attr, string expr = null) { attr.Value = "@{" + (expr != null ? expr : attr.Value) + "}@"; }
 
-    static string parseStyle (string st) {
-      var parts = st.Split(';').Where(p => p.Length>0).Select(s => s.Split(':')).Select(p => new { name = p[0].Trim(), value = p[1].Trim() });
+    static string parseStyle(string st) {
+      var parts = st.Split(';').Where(p => p.Length > 0).Select(s => s.Split(':')).Select(p => new { name = p[0].Trim(), value = p[1].Trim() });
       return "{" + parts.Select(nv => lib.toCammelCase(nv.name) + ": '" + nv.value + "'").Aggregate((r, i) => r + ", " + i) + "}";
     }
 
