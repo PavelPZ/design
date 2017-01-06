@@ -14,11 +14,11 @@ using System;
 
 namespace xmlToTsx {
   public static class convert {
-    public static void toTsxAll() {
-      toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea");
-    }
+    //public static void toTsxAll() {
+    //  toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea");
+    //}
 
-    static void toTsxDir(string srcDir, string destDir) {
+    public static void toTsxDir(string srcDir, string destDir) {
       List<string> errors = new List<string>();
       foreach (var fn in Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml"))) {
         var relPath = fn.Substring(srcDir.Length);
@@ -27,7 +27,7 @@ namespace xmlToTsx {
           var s = toTsx(XElement.Load(fn));
           lib.AdjustFileDir(destPath);
           File.WriteAllText(destPath, s);
-        } catch (Exception exp){
+        } catch (Exception exp) {
           File.WriteAllText(destPath, exp.Message);
           errors.Add(destPath);
         }
@@ -251,6 +251,9 @@ public static class lib {
   }
 
   public static string[] allTypes = new string[] {
+    "docExample",
+    "docDescr",
+
       "tag",
       "evalControl",
       "body",
