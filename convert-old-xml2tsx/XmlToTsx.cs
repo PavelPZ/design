@@ -70,7 +70,7 @@ namespace xmlToTsx {
           }
           //course components only
           if (!isTag) continue;
-          if (oldName == "order") attr.Remove();
+          //if (oldName == "order") attr.Remove();
           var newName = lib.toCammelCase(oldName);
           var fullName = tagName + "." + newName;
           var newAttr = newName != oldName ? renameAttr(attr, newName) : attr;
@@ -126,7 +126,7 @@ namespace xmlToTsx {
       attr.Remove();
       return res;
     }
-    static HashSet<string> numProps = new HashSet<string>(new string[] { "width", "scoreWeight", "limitRecommend", "limitMin", "limitMax", "numberOfRows", "begPos", "endPos", "numberOfPhrases", "phraseIdx" });
+    static HashSet<string> numProps = new HashSet<string>(new string[] { "width", "scoreWeight", "limitRecommend", "limitMin", "limitMax", "numberOfRows", "begPos", "endPos", "numberOfPhrases", "phraseIdx", "order" });
     static HashSet<string> boolProps = new HashSet<string>(new string[] { "isPassive", "scoreAsRatio", "gapFillLike", "caseSensitive",
       "readOnly", "skipEvaluation", "leftRandom", "recordInDialog", "singleAttempt", "isStriped", "hidden", "passive", "correct", "random", "isOldToNew",
       "radioButton.correctValue","radioButton.initValue","checkItem.correctValue","checkBox.correctValue"

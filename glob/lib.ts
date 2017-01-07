@@ -3,7 +3,7 @@
 
 import * as fs from "fs";
 import * as compiler from "globalize-compiler"; ////http://stackoverflow.com/questions/32142529/how-to-access-culture-data-in-globalize-js-v1-0-0
-import * as formaters from "../../rw-lib/glob/formaters";
+//import * as formaters from "../../rw-lib/glob/formaters";
 import { allLangs } from './old2new/all-langs';
 import * as cldr from 'cldrjs';
 import * as Globalize from 'globalize';
@@ -11,7 +11,9 @@ import * as _ from 'lodash';
 
 //let cldr: cldr.CldrFactory = require('cldrjs');
 //let globalize: GlobalizeStatic = require("globalize");
-let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\index.js
+declare namespace formaters { type getFormatterFnc = any; const formaterFncs:any; }
+let cldrData: any;
+//let cldrData = require("cldr-data"); ////d:\rw\design\node_modules\cldr-data\index.js
 
 //let allLangs = ['cs'];
 
