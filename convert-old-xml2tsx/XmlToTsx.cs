@@ -54,6 +54,7 @@ namespace xmlToTsx {
         var isTag = tags.Contains(tagName);
         if (isTag) {
           el.Name = lib.typeName(tagName);
+          if (el.Name == "Body") el.Name = "Page";
           allCrsTags.Add(el.Name.LocalName);
         }
         //uprava atributu
@@ -70,7 +71,7 @@ namespace xmlToTsx {
           }
           //course components only
           if (!isTag) continue;
-          //if (oldName == "order") attr.Remove();
+          if (oldName == "order") attr.Remove();
           var newName = lib.toCammelCase(oldName);
           var fullName = tagName + "." + newName;
           var newAttr = newName != oldName ? renameAttr(attr, newName) : attr;
@@ -79,6 +80,14 @@ namespace xmlToTsx {
           string enumType;
           if (enumProps.TryGetValue(newName, out enumType) || enumProps.TryGetValue(fullName, out enumType))
             wrapExpression(newAttr, "course." + enumType + "." + lib.toCammelCase(newAttr.Value));
+          if (newName == "evalGroup") {
+            var parts = newAttr.Value.Split('-');
+            if (parts.Length > 1) {
+              if (parts.Contains("and")) el.Add(new XAttribute("evalAnd", "@{true}@"));
+              if (parts.Contains("exchangeable")) el.Add(new XAttribute("evalExchangeable", "@{true}@"));
+              newAttr.Value = parts.First(v => v != "and" && v != "exchangeable");
+            }
+          }
         }
       }
       //start: collapse CDATA do cdata atributu
@@ -100,7 +109,7 @@ namespace xmlToTsx {
         body.Save(wr); wr.Flush();
       }
       //finish: enum, bool, number value from string}
-      sb.Replace("\"@{", "{").Replace("}@\"", "}");
+      sb.Replace("=\"@{true}@\"", null).Replace("\"@{", "{").Replace("}@\"", "}");
       //finish: expand CDATA in cdata={``} atributu
       var res = sb.ToString(); sb = null;
       foreach (var m in lib.regExItem.Parse(res, cdataRx)) {
@@ -126,7 +135,7 @@ namespace xmlToTsx {
       attr.Remove();
       return res;
     }
-    static HashSet<string> numProps = new HashSet<string>(new string[] { "width", "scoreWeight", "limitRecommend", "limitMin", "limitMax", "numberOfRows", "begPos", "endPos", "numberOfPhrases", "phraseIdx", "order" });
+    static HashSet<string> numProps = new HashSet<string>(new string[] { "width", "scoreWeight", "limitRecommend", "limitMin", "limitMax", "numberOfRows", "begPos", "endPos", "numberOfPhrases", "phraseIdx"/*, "order"*/ });
     static HashSet<string> boolProps = new HashSet<string>(new string[] { "isPassive", "scoreAsRatio", "gapFillLike", "caseSensitive",
       "readOnly", "skipEvaluation", "leftRandom", "recordInDialog", "singleAttempt", "isStriped", "hidden", "passive", "correct", "random", "isOldToNew",
       "radioButton.correctValue","radioButton.initValue","checkItem.correctValue","checkBox.correctValue"
