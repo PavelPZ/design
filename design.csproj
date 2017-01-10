@@ -84,6 +84,7 @@
     <Compile Include="convert-old-xml2tsx\Index.aspx.designer.cs">
       <DependentUpon>Index.aspx</DependentUpon>
     </Compile>
+    <Compile Include="convert-old-xml2tsx\LowUtils.cs" />
     <Compile Include="convert-old-xml2tsx\XmlToTsx.cs" />
   </ItemGroup>
   <ItemGroup>

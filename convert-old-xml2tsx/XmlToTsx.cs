@@ -18,26 +18,76 @@ namespace xmlToTsx {
     //  toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea");
     //}
 
-    public static void toTsxDir(string srcDir, string destDir) {
+    public static void toTsxDir(string srcDir, string destDir, bool isInstr) {
       List<string> errors = new List<string>();
-      foreach (var fn in Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml"))) {
+      var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
+      //var allLocTags = new HashSet<string>();
+      Dictionary<string, string> loc = null; Dictionary<string, Dictionary<string, string>> instrLocs = null;
+      if (isInstr) {
+        loc = new Dictionary<string, string>();
+        instrLocs = initInstrLocXml();
+      }
+      //foreach (var fn in files.Where(f => f.Contains("les08\\g04"))) {
+      foreach (var fn in files) {
         var relPath = fn.Substring(srcDir.Length);
         var destPath = destDir + relPath.Replace(".xml", ".tsx");
+        var destLocPath = destDir + relPath.Replace(".xml", "-loc.ts");
         try {
-          var s = toTsx(XElement.Load(fn));
-          lib.AdjustFileDir(destPath);
-          File.WriteAllText(destPath, s);
+          //var xml = XElement.Load(fn);
+          //foreach (var prop in xml.DescendantsAndSelf().SelectMany(el => el.Attributes().Where(a => a.Value.StartsWith("{{")).Select(a => el.Name.LocalName + "." + a.Name.LocalName))) allLocTags.Add(prop);
+          //continue;
+          if (isInstr) loc.Clear();
+          var s = toTsx(XElement.Load(fn), Path.GetFileNameWithoutExtension(fn), loc);
+          lib.AdjustFileDir(destPath); File.WriteAllText(destPath, s);
+          //create LOC file for instr
+          var locFn = fn.Replace(".xml", ".loc");
+          if (isInstr) createInstrLocXml(loc, instrLocs).Save(locFn);
+          s = toLoc(XElement.Load(locFn));
+          File.WriteAllText(destLocPath, s);
         } catch (Exception exp) {
           File.WriteAllText(destPath, exp.Message);
           errors.Add(destPath);
         }
       }
+      //File.WriteAllLines(@"d:\temp\allproptags.txt", allLocTags);
       if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
-    static string toTsx(XElement xml) {
+    static string toLoc(XElement xml) {
+      if (!xml.Elements().Any()) return "export default {};";
+      return "import { ILocItem } from \"rw-lib/loc\";\r\n" +
+      xml.Elements().Select(e => {
+        return
+          string.Format("const {0}: ILocItem = {{\r\n", e.Name.LocalName.ToLower()) +
+          e.Elements().Where(ee => ee.Name.LocalName != "vi-vi").Select(ee => string.Format("  \"{0}\": \"{1}\",", ee.Name.LocalName, HttpUtility.JavaScriptStringEncode(ee.Value))).Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
+          "};";
+      }).DefaultIfEmpty().Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
+      "export default { " + xml.Elements().Select(e => e.Name.LocalName.ToLower()).Aggregate((r, i) => r + ", " + i) + " };";
+    }
+
+    static XElement createInstrLocXml(Dictionary<string, string> loc, Dictionary<string, Dictionary<string, string>> instrLocs) {
+      return new XElement("loc", loc.Keys.Select(n => {
+        return new XElement(n, !instrLocs.ContainsKey(n)  
+          ? new XElement("en-gb", loc[n]) as Object
+          : instrLocs[n].Select(nv => new XElement(nv.Key, nv.Value)));
+      }));
+    }
+    static Dictionary<string, Dictionary<string, string>> initInstrLocXml() {
+      var instrLocs = new Dictionary<string, Dictionary<string, string>>();
+      var instrs = XElement.Load(@"d:\rw\data-src\instr\instr.loc-all");
+      foreach (var lngEl in instrs.Elements()) foreach (var nameEl in lngEl.Elements()) {
+          if (nameEl.Value == "TODO") continue;
+          var name = nameEl.Attribute("lang").Value.ToLower();
+          if (!instrLocs.ContainsKey(name)) instrLocs[name] = new Dictionary<string, string>();
+          var nm = instrLocs[name];
+          nm[lngEl.Name.LocalName.Replace('_', '-')] = nameEl.Value;
+        }
+      return instrLocs;
+    }
+
+    static string toTsx(XElement xml, string name, Dictionary<string, string> toLoc) {
       var body = xml.Element("body");
-      HashSet<string> allCrsTags = new HashSet<string>() { "$rc", "$loc" };
+      HashSet<string> allCrsTags = new HashSet<string>(); // { "$rc", "$loc" };
       if (body == null) body = xml;
       else {
         lib.normalizeXml(xml, blankCode);
@@ -97,17 +147,31 @@ namespace xmlToTsx {
         cd.Parent.Add(new XAttribute("cdata", "~{" + (cdatas.Count - 1).ToString() + "}~"));
         cd.Remove();
       }
-      //lokalizace textu a instrTitle
-      foreach (var el in body.DescendantNodes().OfType<XText>()) el.Value = localizeForTsx(el.Value, true);
-      var instrTitle = body.Attribute("instrTitle");
-      if (instrTitle != null) instrTitle.Value = localizeForTsx(instrTitle.Value, false);
+      
+      //lokalizace textu
+      foreach (var el in body.DescendantNodes().OfType<XText>()) el.Value = localizeForTsx(el.Value, true, toLoc);
+      
+      //localize attributes
+      foreach (var att in body.Descendants("PairingItem").Select(e => e.Attribute("right"))) localizeAttr(att, toLoc);
+      localizeAttr(body.Attribute("instrTitle"), toLoc); localizeAttr(body.Attribute("title"), toLoc);
+
+      //instructions
+      var instrStr = body.AttributeValue("instrBody");
+      if (!string.IsNullOrEmpty(instrStr)) {
+        string[] instrs = instrStr == null ? new string[0] : instrStr.Split('|').Select(s => s.Trim()).ToArray();
+        body.Attribute("instrBody").Value = "@{" + (instrs.Length == 1 ? instrs[0] : "[" + instrs.Aggregate((r, i) => r + ", " + i) + "]") + "}@";
+        instrStr = instrs.Select(ins => string.Format("import {0} from \"rw-instr/{0}\"; ", ins)).Aggregate((r, i) => r + " " + i);
+      }
+
       //vyhod XML namespace
       foreach (var attr in body.Attributes().Where(a => a.IsNamespaceDeclaration || a.Name.LocalName == "noNamespaceSchemaLocation").ToArray()) attr.Remove();
+
       //xml to string
       StringBuilder sb = new StringBuilder();
       using (var wr = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = true, Encoding = Encoding.UTF8, Indent = true })) {//, NewLineHandling = NewLineHandling.Replace, NewLineChars = "\n" });
         body.Save(wr); wr.Flush();
       }
+
       //finish: enum, bool, number value from string}
       sb.Replace("=\"@{true}@\"", null).Replace("\"@{", "{").Replace("}@\"", "}");
       //finish: expand CDATA in cdata={``} atributu
@@ -119,11 +183,12 @@ namespace xmlToTsx {
         sb.Append("{`"); sb.Append(cd.Replace("\\", "\\\\")); sb.Append("`}");
       }
       if (sb != null) res = sb.ToString();
+
       //prefix:
-      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; export default () => /*
+      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} export default () => /*
 *********** START MARKUP HERE: */
 ";
-      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i));
+      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr);
       //return
       return prefix + res;
     }
@@ -149,16 +214,30 @@ namespace xmlToTsx {
     static HashSet<string> tags = new HashSet<string>(lib.allTypes);
 
     //mj. nahradi '{' v textu by {'{'} 
-    static string localizeForTsx(string text, bool plainText) {
+    static string localizeForTsx(string text, bool plainText, Dictionary<string, string> toLoc) {
       StringBuilder sb = null;
       foreach (var m in lib.regExItem.Parse(text, lib.localizePartsRegex)) {
         if (sb == null) sb = new StringBuilder();
         if (!m.IsMatch) { sb.Append(replaceBrackets(m.Value).Replace(blankCode, "{' '}")); continue; }
         var parts = m.Value.Substring(2, m.Value.Length - 4).Split('|');
-        var txt = string.Format("{{$loc('{0}','{1}')}}", parts[0], HttpUtility.JavaScriptStringEncode(parts[1]));
+
+        //for grammar: some name contains -.
+        var parts0 = (parts[0].IndexOf('-') >= 0 ? parts[0].Replace("-", null) : parts[0]).ToLower();
+        //d:\rw\data-src\lm\oldea\spanish1\grammar\les03\g01.xml
+        if (char.IsDigit(parts0[0])) parts0 = "error_1";
+        //D:\rw\data\lm\oldea\spanish1\grammar\les08\g04.tsx
+        if (parts0.IndexOf(',') > 0) parts0 = "error_2";
+
+        if (toLoc != null) toLoc[parts0] = parts[1];
+        var txt = string.Format("{{$l(l.{0})}}", parts0);
+        //var txt = string.Format("{{$loc('{0}','{1}')}}", parts[0], HttpUtility.JavaScriptStringEncode(parts[1]));
         sb.Append(plainText ? txt : "@" + txt + "@");
       }
       return sb == null ? text : sb.ToString();
+    }
+    static void localizeAttr(XAttribute attr, Dictionary<string, string> toLoc) {
+      if (attr == null) return;
+      attr.Value = localizeForTsx(attr.Value, false, toLoc);
     }
     static string replaceBrackets(string s) { return s.Split('{').Select(r => r.Replace("}", "{'}'}")).Join("{'{'}"); }
 
