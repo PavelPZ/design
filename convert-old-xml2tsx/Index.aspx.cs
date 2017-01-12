@@ -1,14 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 
 namespace data_old.code {
-  public partial class Index : System.Web.UI.Page {
+    public partial class Index : System.Web.UI.Page {
+    //Rucni zasah: 
+    // D:\rw\data\lm\oldea\german2\les3\chapc\t2a_kb_l3_c1b.tsx, sound_sentences
+    // D:\rw\data\lm\oldea\russian1\lesson6\chaptera\istorija.tsx, <PairingItem right={'Юpий Гaгapин – '+ $l(l.ttrans3)}>1961</PairingItem>
     protected void Page_Load(object sender, EventArgs e) {
-      generateTsConfigs(); return;
+      //generateTsConfigs(); return;
+      xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
       xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea", false);
-      //xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
       //xmlToTsx.convert.toTsxDir(@"D:\rw\rw\rw-course\examples", @"D:\rw\rw\rw-course\examples", false);
     }
 
@@ -22,5 +27,6 @@ namespace data_old.code {
       }
       File.WriteAllLines(@"d:\rw\data\tsc-build\build.cmd", cmd, Encoding.ASCII);
     }
+
   }
 }

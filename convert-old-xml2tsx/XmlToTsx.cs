@@ -21,29 +21,30 @@ namespace xmlToTsx {
     public static void toTsxDir(string srcDir, string destDir, bool isInstr) {
       List<string> errors = new List<string>();
       var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
-      //var allLocTags = new HashSet<string>();
-      Dictionary<string, string> loc = null; Dictionary<string, Dictionary<string, string>> instrLocs = null;
-      if (isInstr) {
-        loc = new Dictionary<string, string>();
-        instrLocs = initInstrLocXml();
-      }
-      //foreach (var fn in files.Where(f => f.Contains("les08\\g04"))) {
+      var locData = initLocXml();
+      var loc = new Dictionary<string, string>();
       foreach (var fn in files) {
+        if (fn.IndexOf("novyeslova") >= 0)
+          continue;
         var relPath = fn.Substring(srcDir.Length);
         var destPath = destDir + relPath.Replace(".xml", ".tsx");
         var destLocPath = destDir + relPath.Replace(".xml", "-loc.ts");
         try {
+          //if (destPath != @"d:\rw\data\lm\oldea\english2\grammar\sec03\g02.tsx") continue;
           //var xml = XElement.Load(fn);
           //foreach (var prop in xml.DescendantsAndSelf().SelectMany(el => el.Attributes().Where(a => a.Value.StartsWith("{{")).Select(a => el.Name.LocalName + "." + a.Name.LocalName))) allLocTags.Add(prop);
           //continue;
-          if (isInstr) loc.Clear();
-          var s = toTsx(XElement.Load(fn), Path.GetFileNameWithoutExtension(fn), loc);
+          loc.Clear();
+          string url;
+          var s = toTsx(XElement.Load(fn), Path.GetFileNameWithoutExtension(fn), loc, out url);
+          if (isInstr) url = "/instrs";
           lib.AdjustFileDir(destPath); File.WriteAllText(destPath, s);
-          //create LOC file for instr
-          var locFn = fn.Replace(".xml", ".loc");
-          if (isInstr) createInstrLocXml(loc, instrLocs).Save(locFn);
-          s = toLoc(XElement.Load(locFn));
-          File.WriteAllText(destLocPath, s);
+          if (url != null) {
+            url = url.Substring(1).Replace('/', '-');
+            var data = locData.ContainsKey(url) ? locData[url] : null;
+            s = toLoc(loc, data, isInstr ? null : locData["sitemap"]);
+            File.WriteAllText(destLocPath, s);
+          }
         } catch (Exception exp) {
           File.WriteAllText(destPath, exp.Message);
           errors.Add(destPath);
@@ -53,28 +54,47 @@ namespace xmlToTsx {
       if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
-    static string toLoc(XElement xml) {
-      if (!xml.Elements().Any()) return "export default {};";
+    static string toLoc(Dictionary<string, string> toLoc, Dictionary<string, Dictionary<string, string>> loc, Dictionary<string, Dictionary<string, string>> locTitle) {
+      if (toLoc.Count == 0) return "export default {};";
+      Func<string, string, string> genItem = (Key, Value) => string.Format("  \"{0}\": \"{1}\",", Key, HttpUtility.JavaScriptStringEncode(Value));
       return "import { ILocItem } from \"rw-lib/loc\";\r\n" +
-      xml.Elements().Select(e => {
+      toLoc.Select(e => {
+        var val = loc!=null && loc.ContainsKey(e.Key) ? loc[e.Key] : (locTitle!=null && locTitle.ContainsKey(e.Key)  ? locTitle[e.Key] : null);
         return
-          string.Format("const {0}: ILocItem = {{\r\n", e.Name.LocalName.ToLower()) +
-          e.Elements().Where(ee => ee.Name.LocalName != "vi-vi").Select(ee => string.Format("  \"{0}\": \"{1}\",", ee.Name.LocalName, HttpUtility.JavaScriptStringEncode(ee.Value))).Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
+          string.Format("const {0}: ILocItem = {{\r\n", e.Key) +
+          (val==null ? genItem("en-gb", e.Value) : val.Where(ee => ee.Key != "vi-vi").Select(ee => genItem(ee.Key, ee.Value)).Aggregate((r, i) => r + "\r\n" + i)) + "\r\n" +
           "};";
       }).DefaultIfEmpty().Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
-      "export default { " + xml.Elements().Select(e => e.Name.LocalName.ToLower()).Aggregate((r, i) => r + ", " + i) + " };";
+      "export default { " + toLoc.Keys.Aggregate((r, i) => r + ", " + i) + " };";
     }
 
-    static XElement createInstrLocXml(Dictionary<string, string> loc, Dictionary<string, Dictionary<string, string>> instrLocs) {
-      return new XElement("loc", loc.Keys.Select(n => {
-        return new XElement(n, !instrLocs.ContainsKey(n)  
-          ? new XElement("en-gb", loc[n]) as Object
-          : instrLocs[n].Select(nv => new XElement(nv.Key, nv.Value)));
-      }));
+    //static string toLoc_(XElement xml) {
+    //  if (!xml.Elements().Any()) return "export default {};";
+    //  return "import { ILocItem } from \"rw-lib/loc\";\r\n" +
+    //  xml.Elements().Select(e => {
+    //    return
+    //      string.Format("const {0}: ILocItem = {{\r\n", e.Name.LocalName.ToLower()) +
+    //      e.Elements().Where(ee => ee.Name.LocalName != "vi-vi").Select(ee => string.Format("  \"{0}\": \"{1}\",", ee.Name.LocalName, HttpUtility.JavaScriptStringEncode(ee.Value))).Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
+    //      "};";
+    //  }).DefaultIfEmpty().Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
+    //  "export default { " + xml.Elements().Select(e => e.Name.LocalName.ToLower()).Aggregate((r, i) => r + ", " + i) + " };";
+    //}
+
+    //static XElement createInstrLocXml(Dictionary<string, string> loc, Dictionary<string, Dictionary<string, string>> instrLocs) {
+    //  return new XElement("loc", loc.Keys.Select(n => {
+    //    return new XElement(n, !instrLocs.ContainsKey(n)
+    //      ? new XElement("en-gb", loc[n]) as Object
+    //      : instrLocs[n].Select(nv => new XElement(nv.Key, nv.Value)));
+    //  }));
+    //}
+    static Dictionary<string, Dictionary<string, Dictionary<string, string>>> initLocXml() {
+      var res = XElement.Load(@"d:\rw\data-src\ea.loc").Elements().ToDictionary(e => e.Name.LocalName == "sitemap" ? "sitemap" : "lm-oldea-" + e.Name.LocalName, e => e.Elements().ToDictionary(ee => ee.Name.LocalName, ee => ee.Elements().ToDictionary(eee => eee.Name.LocalName, eee => eee.Value)));
+      res.Add("instrs", initInstrLocXml());
+      return res;
     }
     static Dictionary<string, Dictionary<string, string>> initInstrLocXml() {
       var instrLocs = new Dictionary<string, Dictionary<string, string>>();
-      var instrs = XElement.Load(@"d:\rw\data-src\instr\instr.loc-all");
+      var instrs = XElement.Load(@"d:\rw\data-src\instr.loc");
       foreach (var lngEl in instrs.Elements()) foreach (var nameEl in lngEl.Elements()) {
           if (nameEl.Value == "TODO") continue;
           var name = nameEl.Attribute("lang").Value.ToLower();
@@ -85,11 +105,12 @@ namespace xmlToTsx {
       return instrLocs;
     }
 
-    static string toTsx(XElement xml, string name, Dictionary<string, string> toLoc) {
-      var body = xml.Element("body");
+    static string toTsx(XElement xml, string name, Dictionary<string, string> toLoc, out string url) {
+      var body = xml.Element("body"); url = null;
       HashSet<string> allCrsTags = new HashSet<string>(); // { "$rc", "$loc" };
       if (body == null) body = xml;
       else {
+        url = body.AttributeValue("url");
         lib.normalizeXml(xml, blankCode);
         var temp = xml.Element("head"); if (temp != null) temp = temp.Element("title");
         if (temp != null) body.Add(new XAttribute("title", temp.Value));
@@ -147,10 +168,10 @@ namespace xmlToTsx {
         cd.Parent.Add(new XAttribute("cdata", "~{" + (cdatas.Count - 1).ToString() + "}~"));
         cd.Remove();
       }
-      
+
       //lokalizace textu
       foreach (var el in body.DescendantNodes().OfType<XText>()) el.Value = localizeForTsx(el.Value, true, toLoc);
-      
+
       //localize attributes
       foreach (var att in body.Descendants("PairingItem").Select(e => e.Attribute("right"))) localizeAttr(att, toLoc);
       localizeAttr(body.Attribute("instrTitle"), toLoc); localizeAttr(body.Attribute("title"), toLoc);
@@ -221,14 +242,14 @@ namespace xmlToTsx {
         if (!m.IsMatch) { sb.Append(replaceBrackets(m.Value).Replace(blankCode, "{' '}")); continue; }
         var parts = m.Value.Substring(2, m.Value.Length - 4).Split('|');
 
-        //for grammar: some name contains -.
-        var parts0 = (parts[0].IndexOf('-') >= 0 ? parts[0].Replace("-", null) : parts[0]).ToLower();
-        //d:\rw\data-src\lm\oldea\spanish1\grammar\les03\g01.xml
-        if (char.IsDigit(parts0[0])) parts0 = "error_1";
-        //D:\rw\data\lm\oldea\spanish1\grammar\les08\g04.tsx
-        if (parts0.IndexOf(',') > 0) parts0 = "error_2";
-
-        if (toLoc != null) toLoc[parts0] = parts[1];
+        var parts0 = normalizeTradosName(parts[0]);
+        ////for grammar: some name contains -.
+        //var parts0 = (parts[0].IndexOf('-') >= 0 ? parts[0].Replace("-", null) : parts[0]).ToLower();
+        ////d:\rw\data-src\lm\oldea\spanish1\grammar\les03\g01.xml
+        //if (char.IsDigit(parts0[0])) parts0 = "error_1";
+        ////D:\rw\data\lm\oldea\spanish1\grammar\les08\g04.tsx
+        //if (parts0.IndexOf(',') > 0) parts0 = "error_2";
+        toLoc[parts0] = parts[1];
         var txt = string.Format("{{$l(l.{0})}}", parts0);
         //var txt = string.Format("{{$loc('{0}','{1}')}}", parts[0], HttpUtility.JavaScriptStringEncode(parts[1]));
         sb.Append(plainText ? txt : "@" + txt + "@");
@@ -239,6 +260,15 @@ namespace xmlToTsx {
       if (attr == null) return;
       attr.Value = localizeForTsx(attr.Value, false, toLoc);
     }
+
+    //musi odpovidat normalizeTradosName v D:\rw\convert-old-solution\OldToNewViewer\Main.cs
+    static string normalizeTradosName(string name) {
+      var res = name.ToLower().Replace("-", null).Split('.')[0];
+      if (char.IsDigit(res[0])) res = "_" + res;
+      else if (res.IndexOf(',') > 0) res = "error_2";
+      return res;
+    }
+
     static string replaceBrackets(string s) { return s.Split('{').Select(r => r.Replace("}", "{'}'}")).Join("{'{'}"); }
 
     static void wrapExpression(XAttribute attr, string expr = null) { attr.Value = "@{" + (expr != null ? expr : attr.Value) + "}@"; }
