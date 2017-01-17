@@ -30,6 +30,7 @@
     <TypeScriptCompile Include="glob\old2new\old-to-new.ts" />
     <TypeScriptCompile Include="glob\old2new\oldLangsEnum.ts" />
     <TypeScriptCompile Include="trash\rt\node-cmd.ts" />
+    <Content Include="convert-old-xml2tsx\doc.txt" />
     <Content Include="convert-old-xml2tsx\Index.aspx" />
     <Content Include="img2js\image-url-template.templ" />
   </ItemGroup>
@@ -97,6 +98,8 @@
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".vscode\launch.json" />
+    <Content Include=".vscode\tasks.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

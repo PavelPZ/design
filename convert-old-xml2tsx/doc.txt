@@ -1,0 +1,33 @@
+********* EA data
+Source files: d:\LMCom\rew\EduAuthorNew\*.new.xml a mozna i d:\LMCom\rew\EduAuthorNew\*.lmdata
+SW: 
+- web d:\LMCom\rew\EduAuthorNew\, kde v BIN je SW z d:\rw\convert-old-solution\
+- d:\rw\convert-old-solution\OldToNewViewer\
+- d:\rw\convert-old-solution\Web4\ asi neni potreba
+Princip prace OldToNewViewer, "gen XML new" link
+- d:\rw\convert-old-solution\OldToNewViewer\Main.cs, ExportXmlNew_LinkClicked
+- vykonná cast je v d:\rw\convert-old-solution\NewLMComModel\Design\CourseMeta.cs, line 847, dataFromEAStr:
+  - provede se request na EduAuthorNew (napr. framework/deployment/EANew-DeployGenerator.aspx?ExerciseUrl=english1%2fl01%2fa%2fhueex0_l01_a11&CourseLang=en_gb&courseId=English&oldeaDataType=xmlNew)
+  - v EduAuthorNew (d:\rw\convert-old-solution\EduAuthor\Handlers.cs, Application_BeginRequest) se vola d:\rw\convert-old-solution\EduAuthor\OldToNew\OldToNew.cs, oldToNewTransform.
+  - na vysledek requestu se provedou upravy (viz dataFromEAStr)
+
+Obrazky:
+  D:\rw\convert-old-solution\NewLMComModel\Design\CourseMeta.cs, src.Value = "/lm/oldea/" + src.Value.ToLower()
+
+********* Instrukce:
+- zdroj v d:\rw\data-src\instr\, coz je flatten verze d:\LMCom\rew\Web4\Data\instr\new\ a \std\
+- ulozi se do .TSX v d:\rw\rw\rw-instr\
+
+********* Lokalizace:
+ - EA: kod D:\rw\convert-old-solution\OldToNewViewer\Main.cs, dumpTrados, vysledek ldumpu je v d:\rw\data-src\ea.loc
+ - instrukce: d:\rw\data-src\instr.loc je kopie d:\LMCom\rew\Web4\Data\instr\instr.loc
+ - vse se v D:\rw\design\convert-old-xml2tsx\XmlToTsx.cs nacte do pameti (initLocXml) a v "toLoc" se vygeneruje *-loc.ts
+
+ ********* Images:
+ Kod v D:\rw\convert-old-solution\EduAuthor\LMSchemaCtrl.cs, _absoluteUrl
+
+ERROR napr.
+d:\LMCom\rew\EduAuthorNew\italian1\l07\a\huiex1_l07_a02.htm.aspx.lmdata
+D:\rw\data-src\lm\oldea\italian1\l07\a\huiex1_l07_a02.xml - chybi odkaz na dopis1.gif
+../../img/coursebook/lesson07/page70/dopis1.gif
+/lm/oldea/italian1/img/coursebook/lesson07/page70/dopis1.gif
