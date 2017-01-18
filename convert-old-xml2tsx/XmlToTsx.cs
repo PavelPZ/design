@@ -18,7 +18,6 @@ namespace xmlToTsx {
     public static void toTsxDir(string srcDir, string destDir, bool isInstr) {
       var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
       var allLocData = initLocXml();
-      var images = new HashSet<string>();
 
       foreach (var fn in files) {
         if (fn.IndexOf("novyeslova") >= 0) //missing localization of used words
@@ -29,10 +28,6 @@ namespace xmlToTsx {
         try {
           //if (destPath != @"d:\rw\data\lm\oldea\english2\grammar\sec03\g02.tsx") continue;
           var root = XElement.Load(fn);
-
-          //images
-          foreach (var el in root.DescendantsAndSelf("img")) images.Add(el.AttributeValue("src"));
-          continue;
 
           //page TSX
           var toLoc = new Dictionary<string, string>();
@@ -53,9 +48,16 @@ namespace xmlToTsx {
           //errors.Add(destPath)
         }
       }
-      File.WriteAllLines(@"d:\temp\images.txt", images.OrderBy(s => s));
+      //File.WriteAllLines(@"d:\temp\images.txt", images.OrderBy(s => s));
       //if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
+
+    static string relImageUrl(string url, string imageUrl) {
+      var modName = VirtualPathUtility.MakeRelative(url, imageUrl);
+      var idx = modName.LastIndexOf('.');
+      return modName.Substring(0, idx) + "." + modName.Substring(idx + 1);
+    }
+
 
     static string genLocTS(Dictionary<string, string> toLoc, Dictionary<string, Dictionary<string, string>> locData, Dictionary<string, Dictionary<string, string>> sitemapLoc) {
       if (toLoc.Count == 0) return "export default {};";
@@ -111,6 +113,7 @@ namespace xmlToTsx {
     static string genPageTSX(XElement root, string name, Dictionary<string, string> toLoc, out string url) {
       var body = root.Element("body"); url = null;
       HashSet<string> allCrsTags = new HashSet<string>(); // { "$rc", "$loc" };
+      var images = new Dictionary<string, string>();
       if (body == null) body = root;
       else {
         url = body.AttributeValue("url");
@@ -125,8 +128,22 @@ namespace xmlToTsx {
 
 
       foreach (var el in body.DescendantsAndSelf()) {
-        var tagName = lib.toCammelCase(el.Name.LocalName);
-        var isTag = tags.Contains(tagName);
+        string tagName; bool isTag;
+        if (el.Name.LocalName == "img") {
+          var src = el.Attribute("src");
+          if (src == null) continue;
+          src.Remove();
+          el.Name = "Img";
+          var imgUrl = relImageUrl(url, src.Value.ToLower());
+          string imgId;
+          if (!images.TryGetValue(imgUrl, out imgId)) images[imgUrl] = imgId = "imageData$" + images.Count(); ;
+          el.Add(new XAttribute("imgData", "@{" + imgId + "}@"));
+          tagName = "Img";
+          isTag = true;
+        } else {
+          tagName = lib.toCammelCase(el.Name.LocalName);
+          isTag = tags.Contains(tagName);
+        }
         if (isTag) {
           el.Name = lib.typeName(tagName);
           if (el.Name == "Body") el.Name = "Page";
@@ -209,11 +226,14 @@ namespace xmlToTsx {
       }
       if (sb != null) res = sb.ToString();
 
+      //import images
+      var imagesScript = images.Select(kv => string.Format("import {1} from'{0}';", kv.Key, kv.Value)).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
+
       //prefix:
-      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} export default () => /*
+      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
 *********** START MARKUP HERE: */
 ";
-      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr);
+      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr, imagesScript);
       //return
       return prefix + res;
     }
