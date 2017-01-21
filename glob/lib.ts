@@ -7,7 +7,7 @@ import * as compiler from "globalize-compiler"; ////http://stackoverflow.com/que
 import { allLangs } from './old2new/all-langs';
 import * as cldr from 'cldrjs';
 import * as Globalize from 'globalize';
-import * as _ from 'lodash';
+import { merge } from 'lodash';
 
 //let cldr: cldr.CldrFactory = require('cldrjs');
 //let globalize: GlobalizeStatic = require("globalize");
@@ -134,7 +134,7 @@ function files(list: Array<string>): Object {
     console.log(fn);
     let s = fs.readFileSync(fn, "utf8");
     let obj = JSON.parse(s) as IData;
-    _.merge(res, obj);
+    merge(res, obj);
   });
   return res;
 }

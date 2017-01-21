@@ -21,3 +21,12 @@ var root = XElement.Load(fn);
           //images
           foreach (var el in root.DescendantsAndSelf("img")) images.Add(el.AttributeValue("src"));
 
+
+
+        var url = File.ReadAllLines(@"d:\rw\design\convert-old-xml2tsx\images\images.txt");
+File.WriteAllLines(@"D:\rw\design\convert-old-xml2tsx\images\images.cmd", new string[] { @"set srcdir=\\lmdata\p\alpha\rew\web4", @"set destdir=d:\rw\data-src", "" }.Concat(url.Select(f => {
+  var fn = f.Replace('/', '\\');
+  var fnDest = fn.Substring(0, fn.LastIndexOf('\\') + 1);
+  return string.Format("xcopy %srcdir%{0} %destdir%{1} /Y", fn, fn); // fnDest);
+})), Encoding.ASCII);
+      return;

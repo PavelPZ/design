@@ -13,7 +13,7 @@ namespace data_old.code {
     protected void Page_Load(object sender, EventArgs e) {
       //generateTsConfigs(); return;
       xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea", false);
-      xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
+      //xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
       //xmlToTsx.convert.toTsxDir(@"D:\rw\rw\rw-course\examples", @"D:\rw\rw\rw-course\examples", false);
     }
 

@@ -1,22 +1,80 @@
-﻿var Builder = require('systemjs-builder');
+﻿import * as fs from "fs";
 
-var builder = new Builder('../rw', '../rw/jspm.config.js');
+interface fetchSrc {
+  address: string;
+  name: string;
+  source: string;
+  metadata: { deps: Array<string>; format: string; };
+}
+export interface ISystem {
+  import(id: string): any;
+  get(name: string): any;
+  delete(name: string); //remove module from SystemJS
+  normalize(name: string, parentName?: string): any;
+  normalizeSync(name: string, parentName?: string): string;
+  fetch(load: fetchSrc): any;
+  instantiate(load: fetchSrc): any;
+  translate(load: fetchSrc): any;
+  defined: {[name:string]:any;};
+  config(cfg:any);
+}
 
-builder.config({
+
+var SystemJS: ISystem = require('systemjs');
+
+SystemJS.config({
   paths: {
-    "config": "../rw/app-config.js" //rewrite D:\rw\rw\jspm.config.js, wrong "config": "./app-config.js"
-  }
+    "npm:": "../../rw/rw/jspm_packages/npm/",
+    //"rw-course/examples/*": "../../rw/rw/rw-course/examples/*.js",
+    "config": "./app-config.js"
+  },
+  map: {
+    "react": "npm:react@15.4.2/dist/react.js",
+    "react-redux": "npm:react-redux@4.4.6/dist/react-redux.js",
+    "redux": "npm:redux@3.6.0/dist/redux.js",
+    "redux-logger": "npm:redux-logger@2.7.4/dist/index.js",
+    "react-dom": "npm:react-dom@15.4.2/dist/react-dom-server.js",
+  },
+  packages: {
+    "rw-lib": {
+      "defaultExtension": "js"
+    },
+    "rw-gui-rt": {
+      "defaultExtension": "js"
+    },
+    "rw-router": {
+      "main": "index.js",
+      "defaultExtension": "js"
+    },
+    "rw-redux": {
+      "main": "index.js",
+      "defaultExtension": "js"
+    },
+    "rw-instr": {
+      "defaultExtension": "js"
+    },
+    "design": {
+      "defaultExtension": "js"
+    },
+    "rw-course": {
+      "main": "index.js",
+      "defaultExtension": "js"
+    }
+  }  
 });
 
-//https://github.com/systemjs/builder/blob/master/docs/api.md#builderbundletree-outfile-options
-builder
-  //.trace('rw-router/test.js')
-  .bundle('rw-router/test.js', '../rw/bundle.js', { minify: true })
-  .then(bundle => {
+
+SystemJS.import('./builds/rw.js').then(m => {
+  const name = SystemJS.normalizeSync('design/test.js');
+  const allMods:Array<string> = [];
+  for(let p in SystemJS.defined) allMods.push(p);
+  fs.writeFileSync('debug.log', allMods.join('\r\n'));
+  SystemJS.import(name).then (m => {
     debugger;
-    console.log('Build complete');
-  })
-  .catch(err => {
-    console.log('Build error');
-    console.log(err);
+  }).catch(err => {
+    debugger;
   });
+  console.log('done');
+}).catch(err => {
+  debugger;
+});

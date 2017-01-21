@@ -15,41 +15,60 @@ using System;
 namespace xmlToTsx {
   public static class convert {
 
+    public class context {
+      public bool isInstr; //generace instrukci
+      public string titleLocKey; //existuje title k lokalizac. Jeho KEY
+      public string noLocTitle; //titulek neni lokalizovan - jeho text
+      public string url; //URL, napr. '/lm/oldea/english1/xxx' 
+      public string name; //jmeno souboru, napr. xxx
+      public bool needsMeta; //body tag a neni to instrukce
+      public bool needsLoc; //existuje cosi k lokalizaci
+      public bool needsLocInMeta; //je potreba importovat lokalizaci do meta souboru: iff titulek je lokalizovan
+      public bool needsLocInPage; //je potreba importovat lokalizaci do page souboru: iff je lokalizovano neco mimo titulku
+    }
+
     public static void toTsxDir(string srcDir, string destDir, bool isInstr) {
       var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
       var allLocData = initLocXml();
-
+      var errors = new List<string>();
       foreach (var fn in files) {
         if (fn.IndexOf("novyeslova") >= 0) //missing localization of used words
           continue;
         var relPath = fn.Substring(srcDir.Length);
         var destPath = destDir + relPath.Replace(".xml", ".tsx");
-        var destLocPath = destDir + relPath.Replace(".xml", "-loc.ts");
+        var destLocPath = destDir + relPath.Replace(".xml", ".loc.ts");
+        var destMetaPath = destDir + relPath.Replace(".xml", ".meta.ts");
         try {
           //if (destPath != @"d:\rw\data\lm\oldea\english2\grammar\sec03\g02.tsx") continue;
           var root = XElement.Load(fn);
 
+          var ctx = new context{ isInstr = isInstr, name = Path.GetFileNameWithoutExtension(fn) };
+
           //page TSX
           var toLoc = new Dictionary<string, string>();
-          string url;
-          var s = genPageTSX(root, Path.GetFileNameWithoutExtension(fn), toLoc, out url);
+          //string titleLocKey;
+          var s = genPageTSX(root, ctx, toLoc); //, out url, out titleLocKey);
           lib.AdjustFileDir(destPath); File.WriteAllText(destPath, s);
 
           //loc TS
-          if (isInstr) url = "/instrs";
-          if (url != null) {
-            url = url.Substring(1).Replace('/', '-');
+          if (isInstr) ctx.url = "/instrs";
+          if (ctx.needsLoc) {
+            var url = ctx.url.Substring(1).Replace('/', '-');
             var locData = allLocData.ContainsKey(url) ? allLocData[url] : null;
-            s = genLocTS(toLoc, locData, isInstr ? null : allLocData["sitemap"]);
+            s = genLocTS(toLoc, locData, ctx.isInstr ? null : allLocData["sitemap"]);
             File.WriteAllText(destLocPath, s);
           }
+          if (ctx.needsMeta) {
+            s = genMetaTS(ctx);
+            File.WriteAllText(destMetaPath, s);
+          }
         } catch (Exception exp) {
-          File.WriteAllText(destPath, exp.Message);
-          //errors.Add(destPath)
+          //File.WriteAllText(destPath, exp.Message);
+          errors.Add(destPath + " " + exp.Message);
         }
       }
       //File.WriteAllLines(@"d:\temp\images.txt", images.OrderBy(s => s));
-      //if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
+      if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
     static string relImageUrl(string url, string imageUrl) {
@@ -58,40 +77,41 @@ namespace xmlToTsx {
       return modName.Substring(0, idx) + "." + modName.Substring(idx + 1);
     }
 
-
-    static string genLocTS(Dictionary<string, string> toLoc, Dictionary<string, Dictionary<string, string>> locData, Dictionary<string, Dictionary<string, string>> sitemapLoc) {
-      if (toLoc.Count == 0) return "export default {};";
-      Func<string, string, string> genItem = (Key, Value) => string.Format("  \"{0}\": \"{1}\",", Key, HttpUtility.JavaScriptStringEncode(Value));
-      return "import { ILocItem } from \"rw-lib/loc\";\r\n" +
-      toLoc.Select(e => {
-        var val = locData != null && locData.ContainsKey(e.Key) ? locData[e.Key] : (sitemapLoc != null && sitemapLoc.ContainsKey(e.Key) ? sitemapLoc[e.Key] : null);
-        return
-          string.Format("const {0}: ILocItem = {{\r\n", e.Key) +
-          (val == null ? genItem("en-gb", e.Value) : val.Where(ee => ee.Key != "vi-vi").Select(ee => genItem(ee.Key, ee.Value)).Aggregate((r, i) => r + "\r\n" + i)) + "\r\n" +
-          "};";
-      }).DefaultIfEmpty().Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
-      "export default { " + toLoc.Keys.Aggregate((r, i) => r + ", " + i) + " };";
+    static string genMetaTS(context ctx) {
+      var line1 = ctx.needsLocInMeta ? "import ll from './{0}.loc';\r\n" : null;
+      var line2Loc = "import {{ IMetaNode }} from 'rw-course'; import {{ $l, toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId]; const meta: IMetaNode = {{ title: $l(l.{0}), url: globId }}; export default meta;\r\n";
+      var line2NoLoc = "import {{ IMetaNode }} from 'rw-course'; import {{ toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const meta: IMetaNode = {{ title: '{0}', url: globId }}; export default meta;\r\n";
+      line1 = line1 == null ? null : string.Format(line1, ctx.name);
+      var line2 = ctx.needsLocInMeta ? string.Format(line2Loc, ctx.titleLocKey) : string.Format(line2NoLoc, HttpUtility.JavaScriptStringEncode(ctx.noLocTitle));
+      var res = line1 + line2;
+      return res; 
     }
 
-    //static string toLoc_(XElement xml) {
-    //  if (!xml.Elements().Any()) return "export default {};";
-    //  return "import { ILocItem } from \"rw-lib/loc\";\r\n" +
-    //  xml.Elements().Select(e => {
-    //    return
-    //      string.Format("const {0}: ILocItem = {{\r\n", e.Name.LocalName.ToLower()) +
-    //      e.Elements().Where(ee => ee.Name.LocalName != "vi-vi").Select(ee => string.Format("  \"{0}\": \"{1}\",", ee.Name.LocalName, HttpUtility.JavaScriptStringEncode(ee.Value))).Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
-    //      "};";
-    //  }).DefaultIfEmpty().Aggregate((r, i) => r + "\r\n" + i) + "\r\n" +
-    //  "export default { " + xml.Elements().Select(e => e.Name.LocalName.ToLower()).Aggregate((r, i) => r + ", " + i) + " };";
-    //}
 
-    //static XElement createInstrLocXml(Dictionary<string, string> loc, Dictionary<string, Dictionary<string, string>> instrLocs) {
-    //  return new XElement("loc", loc.Keys.Select(n => {
-    //    return new XElement(n, !instrLocs.ContainsKey(n)
-    //      ? new XElement("en-gb", loc[n]) as Object
-    //      : instrLocs[n].Select(nv => new XElement(nv.Key, nv.Value)));
-    //  }));
-    //}
+    static string genLocTS(Dictionary<string, string> toLoc, Dictionary<string, Dictionary<string, string>> locData, Dictionary<string, Dictionary<string, string>> sitemapLoc) {
+      var line1 = "import { ILocItem, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName);\r\n";
+      var itemStart = "const {0}: ILocItem = {{\r\n";
+      var item = "  '{0}': '{1}',\r\n";
+      var itemEnd = "};\r\n";
+      var lineRes = "const res = {{ [globId]: {{ {0} }} }};\r\n";
+      var lineLast = "export default res;";
+
+      Func<string, string, string> genItem = (Key, Value) => string.Format(item, Key, HttpUtility.JavaScriptStringEncode(Value));
+      var items = toLoc.Select(e => {
+        //var itStart = string.Format(itemStart, e.Key == titleLocKey ? "title" : e.Key);
+        var itStart = string.Format(itemStart, e.Key);
+        var val = locData != null && locData.ContainsKey(e.Key) ? locData[e.Key] : (sitemapLoc != null && sitemapLoc.ContainsKey(e.Key) ? sitemapLoc[e.Key] : null);
+        var it = (val == null ? genItem("en-gb", e.Value) : val.Where(ee => ee.Key != "vi-vi").Select(ee => genItem(ee.Key, ee.Value)).Aggregate((r, i) => r + i));
+        return itStart + it + itemEnd;
+      }).DefaultIfEmpty().Aggregate((r, i) => r + i);
+
+      lineRes = string.Format(lineRes, toLoc.Keys.Aggregate((r, i) => r + ", " + i));
+
+      var res = line1 + items + lineRes + lineLast;
+      return res;
+
+    }
+
     static Dictionary<string, Dictionary<string, Dictionary<string, string>>> initLocXml() {
       var res = XElement.Load(@"d:\rw\data-src\ea.loc").Elements().ToDictionary(e => e.Name.LocalName == "sitemap" ? "sitemap" : "lm-oldea-" + e.Name.LocalName, e => e.Elements().ToDictionary(ee => ee.Name.LocalName, ee => ee.Elements().ToDictionary(eee => eee.Name.LocalName, eee => eee.Value)));
       res.Add("instrs", initInstrLocXml());
@@ -110,13 +130,14 @@ namespace xmlToTsx {
       return instrLocs;
     }
 
-    static string genPageTSX(XElement root, string name, Dictionary<string, string> toLoc, out string url) {
-      var body = root.Element("body"); url = null;
-      HashSet<string> allCrsTags = new HashSet<string>(); // { "$rc", "$loc" };
+    static string genPageTSX(XElement root, context ctx, Dictionary<string, string> toLoc) { //, out string url, out string titleLocKey) {
+      var body = root.Element("body"); 
+      HashSet<string> allCrsTags = new HashSet<string>();
       var images = new Dictionary<string, string>();
       if (body == null) body = root;
       else {
-        url = body.AttributeValue("url");
+        ctx.url = body.AttributeValue("url");
+        if (!ctx.isInstr) ctx.needsMeta = true;
         lib.normalizeXml(root, blankCode);
         var temp = root.Element("head"); if (temp != null) temp = temp.Element("title");
         if (temp != null) body.Add(new XAttribute("title", temp.Value));
@@ -134,7 +155,7 @@ namespace xmlToTsx {
           if (src == null) continue;
           src.Remove();
           el.Name = "Img";
-          var imgUrl = relImageUrl(url, src.Value.ToLower());
+          var imgUrl = relImageUrl(ctx.url, src.Value.ToLower());
           string imgId;
           if (!images.TryGetValue(imgUrl, out imgId)) images[imgUrl] = imgId = "imageData$" + images.Count(); ;
           el.Add(new XAttribute("imgData", "@{" + imgId + "}@"));
@@ -170,8 +191,11 @@ namespace xmlToTsx {
           if (numProps.Contains(newName) || numProps.Contains(fullName)) wrapExpression(newAttr);
           if (boolProps.Contains(newName) || boolProps.Contains(fullName)) wrapExpression(newAttr);
           string enumType;
-          if (enumProps.TryGetValue(newName, out enumType) || enumProps.TryGetValue(fullName, out enumType))
-            wrapExpression(newAttr, "course." + enumType + "." + lib.toCammelCase(newAttr.Value));
+          if (enumProps.TryGetValue(newName, out enumType) || enumProps.TryGetValue(fullName, out enumType)) {
+            newAttr.Value = lib.toCammelCase(newAttr.Value);
+            //wrapExpression(newAttr, enumType + "." + lib.toCammelCase(newAttr.Value));
+            //allCrsTags.Add(enumType);
+          }
           if (newName == "evalGroup") {
             var parts = newAttr.Value.Split('-');
             if (parts.Length > 1) {
@@ -182,6 +206,7 @@ namespace xmlToTsx {
           }
         }
       }
+
       //start: collapse CDATA do cdata atributu
       List<string> cdatas = new List<string>();
       foreach (var cd in body.DescendantNodes().OfType<XCData>().ToArray()) {
@@ -191,18 +216,27 @@ namespace xmlToTsx {
       }
 
       //lokalizace textu
-      foreach (var el in body.DescendantNodes().OfType<XText>()) el.Value = localizeForTsx(el.Value, true, toLoc);
+      foreach (var el in body.DescendantNodes().OfType<XText>()) el.Value = localizeForTsx(el.Value, true, toLoc, ctx, false);
 
       //localize attributes
-      foreach (var att in body.Descendants("PairingItem").Select(e => e.Attribute("right"))) localizeAttr(att, toLoc);
-      localizeAttr(body.Attribute("instrTitle"), toLoc); localizeAttr(body.Attribute("title"), toLoc);
+      foreach (var att in body.Descendants("PairingItem").Select(e => e.Attribute("right"))) localizeAttr(att, toLoc, ctx, false);
+      localizeAttr(body.Attribute("instrTitle"), toLoc, ctx, false);
+      localizeAttr(body.Attribute("title"), toLoc, ctx, true);
+
+      //napln priznaky dle vysledku lokalizace
+      if (ctx.isInstr) {
+        if (toLoc.Count>0) ctx.needsLocInPage = true;
+      } else {
+        if (ctx.titleLocKey != null) ctx.needsLocInMeta = true; //je lokalizovan titulek => je potreba include loc do meta souboru
+        if (ctx.titleLocKey == null && toLoc.Count > 0 || ctx.titleLocKey != null && toLoc.Count > 1) ctx.needsLocInPage = true; //je lokalizovano i neco mimo titulku => je potreba include loc do Page souboru
+      }
 
       //instructions
+      string[] instrs = null;
       var instrStr = body.AttributeValue("instrBody");
       if (!string.IsNullOrEmpty(instrStr)) {
-        string[] instrs = instrStr == null ? new string[0] : instrStr.Split('|').Select(s => s.Trim()).ToArray();
+        instrs = instrStr == null ? new string[0] : instrStr.Split('|').Select(s => s.Trim()).ToArray();
         body.Attribute("instrBody").Value = "@{" + (instrs.Length == 1 ? instrs[0] : "[" + instrs.Aggregate((r, i) => r + ", " + i) + "]") + "}@";
-        instrStr = instrs.Select(ins => string.Format("import {0} from \"rw-instr/{0}\"; ", ins)).Aggregate((r, i) => r + " " + i);
       }
 
       //vyhod XML namespace
@@ -226,16 +260,32 @@ namespace xmlToTsx {
       }
       if (sb != null) res = sb.ToString();
 
-      //import images
-      var imagesScript = images.Select(kv => string.Format("import {1} from'{0}';", kv.Key, kv.Value)).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
+      var line1 = "import {{ {0} }} from 'rw-course';\r\n";
+      var line2 = ctx.needsLocInPage ? "import ll from './{0}.loc';\r\n" : null;
+      var line3 = ctx.needsMeta ? "import meta from './{0}.meta';\r\n" : null;
+      var lineInstr = "import {0} from 'rw-instr/{0}';\r\n";
+      var lineImg = "import {0} from '{1}';\r\n";
+      //var lineConst = "import React from 'react'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const l = ll[toGlobId(__moduleName)]; export default () => \r\n\r\n";
+      var lineConstLoc = "import React from 'react'; import { $l } from 'rw-lib/loc'; const l = ll[meta.url]; export default () => \r\n\r\n";
+      var lineConstLocNoMeta = "import React from 'react'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const l = ll[toGlobId(__moduleName)]; export default () => \r\n\r\n";
+      var lineConstNoLoc = "import React from 'react'; export default () => \r\n\r\n";
+      var lineConst = ctx.needsLocInPage ? (ctx.needsMeta ? lineConstLoc : lineConstLocNoMeta) : lineConstNoLoc;
 
-      //prefix:
-      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
-*********** START MARKUP HERE: */
-";
-      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr, imagesScript);
-      //return
-      return prefix + res;
+      line1 = string.Format(line1, allCrsTags.Aggregate((r, i) => r + ", " + i));
+      line2 = line2==null ? null : string.Format(line2, ctx.name);
+      line3 = line3 == null ? null : string.Format(line3, ctx.name);
+      lineInstr = instrs==null ? null : instrs.Select(ins => string.Format(lineInstr, ins)).Aggregate((r, i) => r + " " + i);
+      lineImg = images.Select(kv => string.Format(lineImg, kv.Value, kv.Key)).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
+
+      res = line1 + line2 + line3 + lineInstr + lineImg + lineConst + res;
+      return res;
+//      //prefix:
+//      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
+//*********** START MARKUP HERE: */
+//";
+//      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr, imagesScript);
+//      //return
+//      return prefix + res;
     }
     const string blankCode = "~blank~";
     static Regex cdataRx = new Regex("\"~\\{\\d+\\}~\"");
@@ -259,7 +309,7 @@ namespace xmlToTsx {
     static HashSet<string> tags = new HashSet<string>(lib.allTypes);
 
     //mj. nahradi '{' v textu by {'{'} 
-    static string localizeForTsx(string text, bool plainText, Dictionary<string, string> toLoc) {
+    static string localizeForTsx(string text, bool plainText, Dictionary<string, string> toLoc, context ctx, bool isTitle) {
       StringBuilder sb = null;
       foreach (var m in lib.regExItem.Parse(text, lib.localizePartsRegex)) {
         if (sb == null) sb = new StringBuilder();
@@ -267,22 +317,20 @@ namespace xmlToTsx {
         var parts = m.Value.Substring(2, m.Value.Length - 4).Split('|');
 
         var parts0 = normalizeTradosName(parts[0]);
-        ////for grammar: some name contains -.
-        //var parts0 = (parts[0].IndexOf('-') >= 0 ? parts[0].Replace("-", null) : parts[0]).ToLower();
-        ////d:\rw\data-src\lm\oldea\spanish1\grammar\les03\g01.xml
-        //if (char.IsDigit(parts0[0])) parts0 = "error_1";
-        ////D:\rw\data\lm\oldea\spanish1\grammar\les08\g04.tsx
-        //if (parts0.IndexOf(',') > 0) parts0 = "error_2";
         toLoc[parts0] = parts[1];
+        ctx.needsLoc = true;
+        if (isTitle) ctx.titleLocKey = parts0;
         var txt = string.Format("{{$l(l.{0})}}", parts0);
         //var txt = string.Format("{{$loc('{0}','{1}')}}", parts[0], HttpUtility.JavaScriptStringEncode(parts[1]));
         sb.Append(plainText ? txt : "@" + txt + "@");
       }
+      if (isTitle && ctx.titleLocKey==null) ctx.noLocTitle = text;
       return sb == null ? text : sb.ToString();
     }
-    static void localizeAttr(XAttribute attr, Dictionary<string, string> toLoc) {
+    static void localizeAttr(XAttribute attr, Dictionary<string, string> toLoc, context ctx, bool isTitle) {
       if (attr == null) return;
-      attr.Value = localizeForTsx(attr.Value, false, toLoc);
+      attr.Value = localizeForTsx(attr.Value, false, toLoc, ctx, isTitle);
+      if (ctx.needsMeta && isTitle) attr.Value = "@{meta.title}@";
     }
 
     //musi odpovidat normalizeTradosName v D:\rw\convert-old-solution\OldToNewViewer\Main.cs

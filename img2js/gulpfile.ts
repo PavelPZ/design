@@ -13,12 +13,16 @@ const gulpIgnore = require('gulp-ignore');
 const clean = require('gulp-clean');
 const DataURI = require('datauri.template');
 
-const destFn = (srcPath: string, cfg: IConfig): string => srcPath.replace(cfg.basicPath, cfg.destPath);
+const destFn = (srcPath: string): string => {
+  const cfg: IConfig = argv.argv;
+  if (!cfg.destPath) cfg.destPath = cfg.basicPath;
+  return srcPath.replace(cfg.basicPath, cfg.destPath);
+};
 
 interface IConfig {
   basicPath: string; //bitmap SourceBuffer dir
   destPath: string; //bitmap dest dir
-  path: string; //path, relative to source and dest dir
+  //path: string; //path, relative to source and dest dir
   forceReplace: "true"; //true => dont check file date (in create) and file existence (in delete)
 }
 
@@ -45,12 +49,12 @@ gulp.task('test', cb => {
 gulp.task('create-image-url', cb => {
   console.log('START create-image-url');
   const cfg: IConfig = argv.argv;
-  const srcDir = cfg.basicPath + cfg.path;
+  const srcDir = cfg.basicPath;
   const size = { value: { width: -1, height: -1, type: '', origPath: '', id: '' } };
   return gulp
     .src([srcDir + '**/*.png', srcDir + '**/*.jpg', srcDir + '**/*.gif', srcDir + '**/*.bmp']) //
     .pipe<NodeJS.ReadWriteStream>(gulpIgnore.include(fn => { //gulpIgnore.include called due to side efect on fn.path
-      const tsFn = destFn(fn.path, cfg) + '.ts';
+      const tsFn = destFn(fn.path) + '.ts';
       if (cfg.forceReplace !== "true" && fs.existsSync(tsFn)) {
         const imgStat = fs.statSync(fn.path); const tsStat = fs.statSync(tsFn);
         if (tsStat.size > 10 && imgStat.mtime.getTime() < tsStat.mtime.getTime()) return false;
@@ -59,13 +63,14 @@ gulp.task('create-image-url', cb => {
       return true;
     }))
     .pipe(dataUri())
-    .pipe<NodeJS.ReadWriteStream>(gulp.dest(file => destFn(file.base, cfg))); // the dir of output files 
+    .pipe<NodeJS.ReadWriteStream>(gulp.dest(file => destFn(file.base))); // the dir of output files 
 });
 
 gulp.task('delete-image-url', cb => {
   console.log('START delete-image-url');
   const cfg: IConfig = argv.argv;
-  const path = cfg.destPath + cfg.path;
+  if (!cfg.destPath) cfg.destPath = cfg.basicPath;
+  const path = cfg.destPath;
   return gulp
     .src([path + '**/*.png.ts', path + '**/*.jpg.ts', path + '**/*.gif.ts', path + '**/*.bmp.ts'])
     .pipe<NodeJS.ReadWriteStream>(gulpIgnore.include(fn => {
@@ -82,8 +87,8 @@ gulp.task('delete-image-url', cb => {
 
 function dataUri() {
   return through.obj(function (file, enc, callback) {
-    const cfg: IConfig = argv.argv;
     const dataURI = new DataURI();
+    const cfg: IConfig = argv.argv;
     dataURI.format(path.basename(file.path), file.contents);
     const ext = path.extname(file.path);
     const origPath = file.path.replace(/\\/g, '/');
@@ -100,7 +105,7 @@ function dataUri() {
       origPath: origPath
     }, null, 2) + ';\r\nexport default image;';
     file.contents = new Buffer(fileContents);
-    file.path = destFn(file.path, cfg) + '.ts'; //path.join(path.dirname(file.path), basename + '.css');
+    file.path = destFn(file.path) + '.ts'; //path.join(path.dirname(file.path), basename + '.css');
     this.push(file);
     return callback();
   });

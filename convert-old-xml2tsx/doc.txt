@@ -1,4 +1,12 @@
-﻿********* EA data
+﻿********* Princip
+Celý d:\rw\convert-old-solution\ a d:\LMCom\rew\EduAuthorNew slouží k převodu dat (cvičení, gramatiky, instrukcí a lokalizace) z EA do d:\rw\data-src\
+Do d:\rw\data-src\ jsou ještě přidány všechny použité obrázky (pomocné soubory k obrázkům v d:\rw\design\convert-old-xml2tsx\images\)
+
+d:\rw\data-src\ slouží jako zdroj pro generaci D:\rw\data\lm a D:\rw\data\instrs pomocí D:\rw\design\convert-old-xml2tsx\XmlToTsx.cs
+
+==========================================================================================================================
+
+********* EA data
 Source files: d:\LMCom\rew\EduAuthorNew\*.new.xml a mozna i d:\LMCom\rew\EduAuthorNew\*.lmdata
 SW: 
 - web d:\LMCom\rew\EduAuthorNew\, kde v BIN je SW z d:\rw\convert-old-solution\
@@ -20,7 +28,7 @@ Obrazky:
 
 ********* Lokalizace:
  - EA: kod D:\rw\convert-old-solution\OldToNewViewer\Main.cs, dumpTrados, vysledek ldumpu je v d:\rw\data-src\ea.loc
- - instrukce: d:\rw\data-src\instr.loc je kopie d:\LMCom\rew\Web4\Data\instr\instr.loc
+ // plati toto? Nejdou instrukce take pres dumpTrados? : instrukce: d:\rw\data-src\instr.loc je kopie d:\LMCom\rew\Web4\Data\instr\instr.loc
  - vse se v D:\rw\design\convert-old-xml2tsx\XmlToTsx.cs nacte do pameti (initLocXml) a v "toLoc" se vygeneruje *-loc.ts
 
  ********* Images:

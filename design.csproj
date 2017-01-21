@@ -23,6 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="builds\builder.ts" />
+    <TypeScriptCompile Include="builds\rw-all.ts" />
     <TypeScriptCompile Include="builds\test.ts" />
     <TypeScriptCompile Include="glob\alphabets\get-alphabets.ts" />
     <TypeScriptCompile Include="glob\compile.ts" />
@@ -33,7 +35,6 @@
     <TypeScriptCompile Include="trash\rt\node-cmd.ts" />
     <Content Include="convert-old-xml2tsx\doc.txt" />
     <Content Include="convert-old-xml2tsx\Index.aspx" />
-    <Content Include="img2js\image-url-template.templ" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".gitignore" />
@@ -101,6 +102,7 @@
   <ItemGroup>
     <Content Include=".vscode\launch.json" />
     <Content Include=".vscode\tasks.json" />
+    <Content Include="cmd-img2js.cmd" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
