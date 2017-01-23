@@ -7,7 +7,7 @@ d:\rw\data-src\ slouží jako zdroj pro generaci D:\rw\data\lm a D:\rw\data\inst
 ==========================================================================================================================
 
 ********* EA data
-Source files: d:\LMCom\rew\EduAuthorNew\*.new.xml a mozna i d:\LMCom\rew\EduAuthorNew\*.lmdata
+Source files: \\lmdata\p\alpha\rew\web4, zkopírováno do d:\LMCom\rew\EduAuthorNew\*.new.xml a mozna i d:\LMCom\rew\EduAuthorNew\*.lmdata
 SW: 
 - web d:\LMCom\rew\EduAuthorNew\, kde v BIN je SW z d:\rw\convert-old-solution\
 - d:\rw\convert-old-solution\OldToNewViewer\

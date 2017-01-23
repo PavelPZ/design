@@ -31,6 +31,7 @@ namespace xmlToTsx {
       var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
       var allLocData = initLocXml();
       var errors = new List<string>();
+
       foreach (var fn in files) {
         if (fn.IndexOf("novyeslova") >= 0) //missing localization of used words
           continue;
@@ -71,8 +72,12 @@ namespace xmlToTsx {
       if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
+    static string prefixDot (string url) {
+      return url.StartsWith(".") ? url : "./" + url;
+    }
+
     static string relImageUrl(string url, string imageUrl) {
-      var modName = VirtualPathUtility.MakeRelative(url, imageUrl);
+      var modName = prefixDot(VirtualPathUtility.MakeRelative(url, imageUrl));
       var idx = modName.LastIndexOf('.');
       return modName.Substring(0, idx) + "." + modName.Substring(idx + 1);
     }
@@ -147,7 +152,6 @@ namespace xmlToTsx {
       //remove tag with id="alwaysVisiblePanel"
       foreach (var el in body.DescendantsAndSelf().OfType<XElement>().Where(e => e.AttributeValue("id") == "alwaysVisiblePanel").ToArray()) el.Remove();
 
-
       foreach (var el in body.DescendantsAndSelf()) {
         string tagName; bool isTag;
         if (el.Name.LocalName == "img") {
@@ -157,7 +161,7 @@ namespace xmlToTsx {
           el.Name = "Img";
           var imgUrl = relImageUrl(ctx.url, src.Value.ToLower());
           string imgId;
-          if (!images.TryGetValue(imgUrl, out imgId)) images[imgUrl] = imgId = "imageData$" + images.Count(); ;
+          if (!images.TryGetValue(imgUrl, out imgId)) images[imgUrl] = imgId = "$img_" + images.Count();
           el.Add(new XAttribute("imgData", "@{" + imgId + "}@"));
           tagName = "Img";
           isTag = true;
@@ -185,6 +189,7 @@ namespace xmlToTsx {
           //course components only
           if (!isTag) continue;
           if (oldName == "order") attr.Remove();
+          if (oldName == "url") attr.Remove();
           var newName = lib.toCammelCase(oldName);
           var fullName = tagName + "." + newName;
           var newAttr = newName != oldName ? renameAttr(attr, newName) : attr;
@@ -235,8 +240,16 @@ namespace xmlToTsx {
       string[] instrs = null;
       var instrStr = body.AttributeValue("instrBody");
       if (!string.IsNullOrEmpty(instrStr)) {
-        instrs = instrStr == null ? new string[0] : instrStr.Split('|').Select(s => s.Trim()).ToArray();
+        instrs = instrStr.Split('|').Select(s => s.Trim()).ToArray();
         body.Attribute("instrBody").Value = "@{" + (instrs.Length == 1 ? instrs[0] : "[" + instrs.Aggregate((r, i) => r + ", " + i) + "]") + "}@";
+      }
+
+      //see also
+      string[] seeAlso = null;
+      var seeAlsoStr = body.AttributeValue("seeAlsoStr");
+      if (!string.IsNullOrEmpty(seeAlsoStr)) {
+        seeAlso = seeAlsoStr.Split('#').Select(s => s.Split('|')[0]).Distinct().ToArray();
+        body.Attribute("seeAlsoStr").Value = "@{" + (seeAlso.Length == 1 ? "$see_0" : "[" + seeAlso.Select((s,idx) => "$see_" + idx.ToString()).Aggregate((r, i) => r + ", " + i) + "]") + "}@";
       }
 
       //vyhod XML namespace
@@ -264,6 +277,7 @@ namespace xmlToTsx {
       var line2 = ctx.needsLocInPage ? "import ll from './{0}.loc';\r\n" : null;
       var line3 = ctx.needsMeta ? "import meta from './{0}.meta';\r\n" : null;
       var lineInstr = "import {0} from 'rw-instr/{0}';\r\n";
+      var lineSeeAlso = "import {0} from '{1}';\r\n";
       var lineImg = "import {0} from '{1}';\r\n";
       //var lineConst = "import React from 'react'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const l = ll[toGlobId(__moduleName)]; export default () => \r\n\r\n";
       var lineConstLoc = "import React from 'react'; import { $l } from 'rw-lib/loc'; const l = ll[meta.url]; export default () => \r\n\r\n";
@@ -276,8 +290,14 @@ namespace xmlToTsx {
       line3 = line3 == null ? null : string.Format(line3, ctx.name);
       lineInstr = instrs==null ? null : instrs.Select(ins => string.Format(lineInstr, ins)).Aggregate((r, i) => r + " " + i);
       lineImg = images.Select(kv => string.Format(lineImg, kv.Value, kv.Key)).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
+      lineSeeAlso = seeAlso==null ? null : seeAlso.Select((url, idx) => {
+        var pg = ctx.url.Replace("/lm/oldea/", "/"); var crs = pg.Split('/')[1];
+        var s = "/" + crs + url.Replace("/lm/oldea/", "/");
+        var su = string.Format(lineSeeAlso, "$see_" + idx, prefixDot(VirtualPathUtility.MakeRelative(pg, s + ".meta")));
+        return su;
+      }).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
 
-      res = line1 + line2 + line3 + lineInstr + lineImg + lineConst + res;
+      res = line1 + line2 + line3 + lineInstr + lineImg + lineSeeAlso + lineConst + res;
       return res;
 //      //prefix:
 //      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
