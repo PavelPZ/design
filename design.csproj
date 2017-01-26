@@ -26,6 +26,9 @@
     <TypeScriptCompile Include="builds\builder.ts" />
     <TypeScriptCompile Include="builds\rw-all.ts" />
     <TypeScriptCompile Include="builds\test.ts" />
+    <TypeScriptCompile Include="convert-old-xml2tsx\component-generator.ts" />
+    <TypeScriptCompile Include="convert-old-xml2tsx\comps.tsx" />
+    <TypeScriptCompile Include="convert-old-xml2tsx\dom.ts" />
     <TypeScriptCompile Include="glob\alphabets\get-alphabets.ts" />
     <TypeScriptCompile Include="glob\compile.ts" />
     <TypeScriptCompile Include="glob\lib.ts" />
@@ -41,6 +44,7 @@
     <TypeScriptCompile Include="trash\atom\gulpfile.ts" />
     <TypeScriptCompile Include="atomic-css\gulpfile.ts" />
     <TypeScriptCompile Include="img2js\gulpfile.ts" />
+    <Content Include="convert-old-xml2tsx\products.xml" />
     <Content Include="tsconfig.json" />
   </ItemGroup>
   <ItemGroup>
@@ -103,6 +107,8 @@
     <Content Include=".vscode\launch.json" />
     <Content Include=".vscode\tasks.json" />
     <Content Include="cmd-img2js.cmd" />
+    <Content Include="convert-old-xml2tsx\dom.json" />
+    <Content Include="convert-old-xml2tsx\dom-tree.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

@@ -11,9 +11,11 @@ namespace data_old.code {
     // D:\rw\data\lm\oldea\german2\les3\chapc\t2a_kb_l3_c1b.tsx, sound_sentences
     // D:\rw\data\lm\oldea\russian1\lesson6\chaptera\istorija.tsx, <PairingItem right={'Юpий Гaгapин – '+ $l(l.ttrans3)}>1961</PairingItem>
     protected void Page_Load(object sender, EventArgs e) {
+      xmlToTsx.convert.genSiteMap();
+      return;
       //generateTsConfigs(); return;
       xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\lm\oldea", @"d:\rw\data\lm\oldea", false);
-      //xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
+      xmlToTsx.convert.toTsxDir(@"d:\rw\data-src\instr", @"d:\rw\rw\rw-instr", true);
       //xmlToTsx.convert.toTsxDir(@"D:\rw\rw\rw-course\examples", @"D:\rw\rw\rw-course\examples", false);
     }
 

@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "paths": {
       //"tslib": [ "node_modules/tslib/tslib" ]
-    }
+    },
+    "jsx": "react"
   },
   "include": [
     "**/*"

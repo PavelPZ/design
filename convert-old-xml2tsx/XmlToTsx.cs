@@ -27,6 +27,55 @@ namespace xmlToTsx {
       public bool needsLocInPage; //je potreba importovat lokalizaci do page souboru: iff je lokalizovano neco mimo titulku
     }
 
+    public static void genSiteMap() {
+      var xml = XElement.Load(@"D:\rw\design\convert-old-xml2tsx\products.xml");
+      var roots = xml.Elements().SelectMany(e => e.Elements().SelectMany(ell => ell.Elements())).ToArray();
+      var sitemapLocs = initLocXml()["sitemap"];
+      foreach (var root in roots) {
+        var fn = root.AttributeValue("url").Replace("/lm/oldea/", null); fn = fn.Substring(0, fn.Length - 1).Replace('/', '-');
+        var line = fn.Split(new char[] { '_', '-' })[0];
+        var sitemapDir = @"d:\rw\data\lm\oldea\" + line + "\\";
+        var ctx = new context() { name = fn };
+        // localization
+        var toLoc = new Dictionary<string, string>();
+        var titles = root.DescendantsAndSelf().SelectMany(el => el.Attributes()).Where(a => a.Name.LocalName == "title").ToArray();
+        foreach (var title in titles) localizeAttr(title, toLoc, ctx, true);
+        if (ctx.needsLoc) File.WriteAllText(sitemapDir + ctx.name + ".loc.ts", genLocTS(toLoc, sitemapLocs, null));
+        //sitemap
+        var locLine = ctx.needsLoc ? string.Format("import ll from './{0}.loc';\r\n", ctx.name) : null;
+        var importLineLoc = "import { IMetaNode } from 'rw-course'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId];\r\n";
+        var importLineNoLoc = "import { IMetaNode } from 'rw-course';\r\n";
+        var importLine = ctx.needsLoc ? importLineLoc : importLineNoLoc;
+        var importEx = "import {0} from '{1}.meta';\r\n";
+        var exportLine = "export default sitemap;";
+        var cnt = 0;
+        var exs = root.DescendantsAndSelf().Where(el => el.AttributeValue("type") == "ex").Select(el => el.AttributeValue("url")).Where(url => correctSitemaUrl(url)).ToDictionary(url => url, url => "ex$" + cnt++);
+        var imports = exs.Select(kv => string.Format(importEx, kv.Value, kv.Key.Substring(1))).DefaultIfEmpty().Aggregate((r, i) => r + i);
+        var sb = new StringBuilder();
+        genSitemapCode(sb, root, exs);
+        var code = "const sitemap: IMetaNode = " + sb.ToString() + ";\r\n";
+        var res = locLine + importLine + imports + code + exportLine;
+        File.WriteAllText(sitemapDir + ctx.name + ".ts", res);
+      }
+      roots = null;
+    }
+    static void genSitemapCode(StringBuilder sb, XElement root, Dictionary<string, string> exs) {
+      var type = root.AttributeValue("type"); var url = root.AttributeValue("url");
+      if (type == "ex") { sb.Append(exs[url]); return; }
+      var title = root.AttributeValue("title");
+      if (!title.StartsWith("@")) title = "'" + HttpUtility.JavaScriptStringEncode(title) + "'"; else title = title.Substring(2, title.Length - 4);
+      sb.Append("{ title: "); sb.Append(title); sb.Append(", url:'"); sb.Append(url); sb.AppendLine("', childs: [");
+      var first = true;
+      foreach (var el in root.Elements()) {
+        if (!correctSitemaUrl(el.AttributeValue("url"))) continue;
+        if (first) first = false; else sb.AppendLine(",");
+        genSitemapCode(sb, el, exs);
+      }
+      sb.Append("]}");
+    }
+
+    static bool correctSitemaUrl(string url) { return url.IndexOf("t1a_ab_l6_b2c1") < 0 && url.IndexOf("t1b_ab_l9_g6a") < 0 && url.IndexOf("t2b_ab_l10_e5") < 0 && url.IndexOf("t2b_ab_l11_a6") < 0 && url.IndexOf("novyeslova") < 0 && url.IndexOf("russian3/lesson2/chaptera/pocemu") < 0;  }
+
     public static void toTsxDir(string srcDir, string destDir, bool isInstr) {
       var files = Directory.EnumerateFiles(srcDir, "*.xml", SearchOption.AllDirectories).Select(f => f.ToLower()).Where(f => !f.EndsWith(@"\meta.xml")).ToArray();
       var allLocData = initLocXml();
@@ -43,7 +92,7 @@ namespace xmlToTsx {
           //if (destPath != @"d:\rw\data\lm\oldea\english2\grammar\sec03\g02.tsx") continue;
           var root = XElement.Load(fn);
 
-          var ctx = new context{ isInstr = isInstr, name = Path.GetFileNameWithoutExtension(fn) };
+          var ctx = new context { isInstr = isInstr, name = Path.GetFileNameWithoutExtension(fn) };
 
           //page TSX
           var toLoc = new Dictionary<string, string>();
@@ -72,7 +121,7 @@ namespace xmlToTsx {
       if (errors.Count > 0) throw new Exception(errors.Aggregate((r, i) => r + "\r\n" + i));
     }
 
-    static string prefixDot (string url) {
+    static string prefixDot(string url) {
       return url.StartsWith(".") ? url : "./" + url;
     }
 
@@ -89,7 +138,7 @@ namespace xmlToTsx {
       line1 = line1 == null ? null : string.Format(line1, ctx.name);
       var line2 = ctx.needsLocInMeta ? string.Format(line2Loc, ctx.titleLocKey) : string.Format(line2NoLoc, HttpUtility.JavaScriptStringEncode(ctx.noLocTitle));
       var res = line1 + line2;
-      return res; 
+      return res;
     }
 
 
@@ -136,7 +185,7 @@ namespace xmlToTsx {
     }
 
     static string genPageTSX(XElement root, context ctx, Dictionary<string, string> toLoc) { //, out string url, out string titleLocKey) {
-      var body = root.Element("body"); 
+      var body = root.Element("body");
       HashSet<string> allCrsTags = new HashSet<string>();
       var images = new Dictionary<string, string>();
       if (body == null) body = root;
@@ -230,7 +279,7 @@ namespace xmlToTsx {
 
       //napln priznaky dle vysledku lokalizace
       if (ctx.isInstr) {
-        if (toLoc.Count>0) ctx.needsLocInPage = true;
+        if (toLoc.Count > 0) ctx.needsLocInPage = true;
       } else {
         if (ctx.titleLocKey != null) ctx.needsLocInMeta = true; //je lokalizovan titulek => je potreba include loc do meta souboru
         if (ctx.titleLocKey == null && toLoc.Count > 0 || ctx.titleLocKey != null && toLoc.Count > 1) ctx.needsLocInPage = true; //je lokalizovano i neco mimo titulku => je potreba include loc do Page souboru
@@ -249,7 +298,7 @@ namespace xmlToTsx {
       var seeAlsoStr = body.AttributeValue("seeAlsoStr");
       if (!string.IsNullOrEmpty(seeAlsoStr)) {
         seeAlso = seeAlsoStr.Split('#').Select(s => s.Split('|')[0]).Distinct().ToArray();
-        body.Attribute("seeAlsoStr").Value = "@{" + (seeAlso.Length == 1 ? "$see_0" : "[" + seeAlso.Select((s,idx) => "$see_" + idx.ToString()).Aggregate((r, i) => r + ", " + i) + "]") + "}@";
+        body.Attribute("seeAlsoStr").Value = "@{" + (seeAlso.Length == 1 ? "$see_0" : "[" + seeAlso.Select((s, idx) => "$see_" + idx.ToString()).Aggregate((r, i) => r + ", " + i) + "]") + "}@";
       }
 
       //vyhod XML namespace
@@ -286,11 +335,11 @@ namespace xmlToTsx {
       var lineConst = ctx.needsLocInPage ? (ctx.needsMeta ? lineConstLoc : lineConstLocNoMeta) : lineConstNoLoc;
 
       line1 = string.Format(line1, allCrsTags.Aggregate((r, i) => r + ", " + i));
-      line2 = line2==null ? null : string.Format(line2, ctx.name);
+      line2 = line2 == null ? null : string.Format(line2, ctx.name);
       line3 = line3 == null ? null : string.Format(line3, ctx.name);
-      lineInstr = instrs==null ? null : instrs.Select(ins => string.Format(lineInstr, ins)).Aggregate((r, i) => r + " " + i);
+      lineInstr = instrs == null ? null : instrs.Select(ins => string.Format(lineInstr, ins)).Aggregate((r, i) => r + " " + i);
       lineImg = images.Select(kv => string.Format(lineImg, kv.Value, kv.Key)).DefaultIfEmpty().Aggregate((r, i) => r + "" + i);
-      lineSeeAlso = seeAlso==null ? null : seeAlso.Select((url, idx) => {
+      lineSeeAlso = seeAlso == null ? null : seeAlso.Select((url, idx) => {
         var pg = ctx.url.Replace("/lm/oldea/", "/"); var crs = pg.Split('/')[1];
         var s = "/" + crs + url.Replace("/lm/oldea/", "/");
         var su = string.Format(lineSeeAlso, "$see_" + idx, prefixDot(VirtualPathUtility.MakeRelative(pg, s + ".meta")));
@@ -299,13 +348,13 @@ namespace xmlToTsx {
 
       res = line1 + line2 + line3 + lineInstr + lineImg + lineSeeAlso + lineConst + res;
       return res;
-//      //prefix:
-//      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
-//*********** START MARKUP HERE: */
-//";
-//      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr, imagesScript);
-//      //return
-//      return prefix + res;
+      //      //prefix:
+      //      string prefix = @"import React from 'react'; import course, {{{0}}} from 'rw-course'; import {{ $l }} from 'rw-lib/loc'; import l from './{1}-loc'; {2} {3} export default () => /*
+      //*********** START MARKUP HERE: */
+      //";
+      //      prefix = string.Format(prefix, allCrsTags.Aggregate((r, i) => r + ", " + i), name, instrStr, imagesScript);
+      //      //return
+      //      return prefix + res;
     }
     const string blankCode = "~blank~";
     static Regex cdataRx = new Regex("\"~\\{\\d+\\}~\"");
@@ -344,7 +393,7 @@ namespace xmlToTsx {
         //var txt = string.Format("{{$loc('{0}','{1}')}}", parts[0], HttpUtility.JavaScriptStringEncode(parts[1]));
         sb.Append(plainText ? txt : "@" + txt + "@");
       }
-      if (isTitle && ctx.titleLocKey==null) ctx.noLocTitle = text;
+      if (isTitle && ctx.titleLocKey == null) ctx.noLocTitle = text;
       return sb == null ? text : sb.ToString();
     }
     static void localizeAttr(XAttribute attr, Dictionary<string, string> toLoc, context ctx, bool isTitle) {
@@ -371,6 +420,7 @@ namespace xmlToTsx {
     }
 
   }
+
 }
 
 public static class lib {
@@ -543,3 +593,4 @@ public static class lib {
     };
 
 }
+
