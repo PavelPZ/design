@@ -31,9 +31,11 @@ namespace xmlToTsx {
       var xml = XElement.Load(@"D:\rw\design\convert-old-xml2tsx\products.xml");
       var roots = xml.Elements().SelectMany(e => e.Elements().SelectMany(ell => ell.Elements())).ToArray();
       var sitemapLocs = initLocXml()["sitemap"];
+      var oldea = new List<string>();
       foreach (var root in roots) {
         var fn = root.AttributeValue("url").Replace("/lm/oldea/", null); fn = fn.Substring(0, fn.Length - 1).Replace('/', '-');
         var line = fn.Split(new char[] { '_', '-' })[0];
+        oldea.Add(string.Format("lm/oldea/{0}/{1}", line, fn));
         var sitemapDir = @"d:\rw\data\lm\oldea\" + line + "\\";
         var ctx = new context() { name = fn };
         // localization
@@ -43,9 +45,10 @@ namespace xmlToTsx {
         if (ctx.needsLoc) File.WriteAllText(sitemapDir + ctx.name + ".loc.ts", genLocTS(toLoc, sitemapLocs, null));
         //sitemap
         var locLine = ctx.needsLoc ? string.Format("import ll from './{0}.loc';\r\n", ctx.name) : null;
-        var importLineLoc = "import { IMetaNode } from 'rw-course'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId];\r\n";
-        var importLineNoLoc = "import { IMetaNode } from 'rw-course';\r\n";
-        var importLine = ctx.needsLoc ? importLineLoc : importLineNoLoc;
+        //var importLineLoc = "import { IMetaNode } from 'rw-course'; import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId];\r\n";
+        //var importLineNoLoc = "import { IMetaNode } from 'rw-course';\r\n";
+        var importLine = !ctx.needsLoc ?  null : "import { $l, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId];\r\n";
+        //var importLine = ctx.needsLoc ? importLineLoc : importLineNoLoc;
         var importEx = "import {0} from '{1}.meta';\r\n";
         var exportLine = "export default sitemap;";
         var cnt = 0;
@@ -53,18 +56,26 @@ namespace xmlToTsx {
         var imports = exs.Select(kv => string.Format(importEx, kv.Value, kv.Key.Substring(1))).DefaultIfEmpty().Aggregate((r, i) => r + i);
         var sb = new StringBuilder();
         genSitemapCode(sb, root, exs);
-        var code = "const sitemap: IMetaNode = " + sb.ToString() + ";\r\n";
+        var code = "const sitemap: DCourse.IMetaNode = " + sb.ToString() + ";\r\n";
         var res = locLine + importLine + imports + code + exportLine;
         File.WriteAllText(sitemapDir + ctx.name + ".ts", res);
       }
-      roots = null;
+      var allcnt = 0;
+      var oldEADir = oldea.ToDictionary(url => url, url => "root$" + allcnt++);
+      var allImport = "import {0} from '{1}';\r\n";
+      allImport = oldEADir.Select(kv => string.Format(allImport, kv.Value, kv.Key)).DefaultIfEmpty().Aggregate((r, i) => r + i);
+      var all1 = "const allOldEA = { childs: [" + oldEADir.Values.Aggregate((r,i) => r + ", " + i) + "]};\r\n";
+      var all2 = "export default allOldEA;";
+      var all = allImport + all1 + all2;
+      File.WriteAllText(@"d:\rw\data\lm\oldea\index.ts", all);
     }
     static void genSitemapCode(StringBuilder sb, XElement root, Dictionary<string, string> exs) {
       var type = root.AttributeValue("type"); var url = root.AttributeValue("url");
       if (type == "ex") { sb.Append(exs[url]); return; }
+      if (root.Parent.AttributeValue("type") == "grammarRoot") type = "modGrammar";
       var title = root.AttributeValue("title");
       if (!title.StartsWith("@")) title = "'" + HttpUtility.JavaScriptStringEncode(title) + "'"; else title = title.Substring(2, title.Length - 4);
-      sb.Append("{ title: "); sb.Append(title); sb.Append(", url:'"); sb.Append(url); sb.AppendLine("', childs: [");
+      sb.AppendFormat("{{ title: {0}, url: '{1}', {2}childs: [", title, url, type==null ? null : string.Format("flag: '{0}', ", type)); //sb.Append(title); sb.Append(", url:'"); sb.Append(url); sb.AppendLine("', childs: [");
       var first = true;
       foreach (var el in root.Elements()) {
         if (!correctSitemaUrl(el.AttributeValue("url"))) continue;
@@ -133,8 +144,10 @@ namespace xmlToTsx {
 
     static string genMetaTS(context ctx) {
       var line1 = ctx.needsLocInMeta ? "import ll from './{0}.loc';\r\n" : null;
-      var line2Loc = "import {{ IMetaNode }} from 'rw-course'; import {{ $l, toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId]; const meta: IMetaNode = {{ title: $l(l.{0}), url: globId }}; export default meta;\r\n";
-      var line2NoLoc = "import {{ IMetaNode }} from 'rw-course'; import {{ toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const meta: IMetaNode = {{ title: '{0}', url: globId }}; export default meta;\r\n";
+      //var line2Loc = "import {{ IMetaNode }} from 'rw-course'; import {{ $l, toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId]; const meta: IMetaNode = {{ title: $l(l.{0}), url: globId }}; export default meta;\r\n";
+      //var line2NoLoc = "import {{ IMetaNode }} from 'rw-course'; import {{ toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const meta: IMetaNode = {{ title: '{0}', url: globId, flag: 'ex' }}; export default meta;\r\n";
+      var line2Loc = "import {{ $l, toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const l = ll[globId]; const meta: DCourse.IMetaNode = {{ title: $l(l.{0}), url: globId }}; export default meta;\r\n";
+      var line2NoLoc = "import {{ toGlobId }} from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName); const meta: DCourse.IMetaNode = {{ title: '{0}', url: globId, flag: 'ex' }}; export default meta;\r\n";
       line1 = line1 == null ? null : string.Format(line1, ctx.name);
       var line2 = ctx.needsLocInMeta ? string.Format(line2Loc, ctx.titleLocKey) : string.Format(line2NoLoc, HttpUtility.JavaScriptStringEncode(ctx.noLocTitle));
       var res = line1 + line2;
@@ -143,8 +156,8 @@ namespace xmlToTsx {
 
 
     static string genLocTS(Dictionary<string, string> toLoc, Dictionary<string, Dictionary<string, string>> locData, Dictionary<string, Dictionary<string, string>> sitemapLoc) {
-      var line1 = "import { ILocItem, toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName);\r\n";
-      var itemStart = "const {0}: ILocItem = {{\r\n";
+      var line1 = "import { toGlobId } from 'rw-lib/loc'; declare const __moduleName: string; const globId = toGlobId(__moduleName);\r\n";
+      var itemStart = "const {0}: DLoc.ILocItem = {{\r\n";
       var item = "  '{0}': '{1}',\r\n";
       var itemEnd = "};\r\n";
       var lineRes = "const res = {{ [globId]: {{ {0} }} }};\r\n";
