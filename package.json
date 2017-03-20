@@ -1,4 +1,43 @@
 {
+  "reactToolbox": {
+    "include": [
+      "AUTOCOMPLETE",
+      "AVATAR",
+      "BUTTON",
+      "CARD",
+      "CHECKBOX",
+      "CHIP",
+      "DATE_PICKER",
+      "DIALOG",
+      "DRAWER",
+      "DROPDOWN",
+      "INPUT",
+      "LAYOUT",
+      "LINK",
+      "LIST",
+      "MENU",
+      "NAVIGATION",
+      "OVERLAY",
+      "PROGRESS_BAR",
+      "RADIO",
+      "RIPPLE",
+      "SLIDER",
+      "SNACKBAR",
+      "SWITCH",
+      "TABLE",
+      "TABS",
+      "TIME_PICKER",
+      "TOOLTIP"
+    ],
+    "customProperties": {
+      "animation-duration": "0.3s",
+      "color-accent": "var(--palette-pink-a200)",
+      "color-accent-dark": "var(--palette-pink-700)",
+      "color-primary-contrast": "var(--color-dark-contrast)",
+      "color-accent-contrast": "var(--color-dark-contrast)"
+    },
+    "output": "../rw/rw-gui-rt"
+  },
   "name": "design",
   "version": "1.0.0",
   "description": "",
@@ -33,15 +72,18 @@
     "image-size": "^0.5.1",
     "jspm": "^0.17.0-beta.32",
     "lodash": "^4.17.4",
+    "react-toolbox": "^2.0.0-beta.6",
+    "react-toolbox-themr": "^1.0.2",
     "run-sequence": "^1.2.2",
     "systemjs-builder": "^0.15.34",
     "through2": "^2.0.3",
     "tslib": "^1.5.0",
     "yargs": "^6.5.0"
   },
-  "devDependencies": {},
+  "devDependencies": { },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "toolbox": "react-toolbox-themr"
   },
   "repository": {
     "type": "git",
